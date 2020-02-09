@@ -1,0 +1,13 @@
+[package]
+name = "lang"
+version = "0.1.0"
+authors = ["Didrik Munther <dmu0817@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+maplit = "1.0.2"
+lazy_static = "1.4.0"
+matches = "0.1.8"
+regex = "1"
