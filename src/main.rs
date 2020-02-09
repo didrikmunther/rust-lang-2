@@ -9,7 +9,7 @@ fn main() {
     // ")))
 
     let code = "
-        a = 5 + 5 - 6 / 2 ** 1 (  )
+        a = 5 + 5 - 6 / 2 ** 1 ()
     ";
     // let code = "Hello, \"there   \"       asdf  \"   a 
     //     asdf

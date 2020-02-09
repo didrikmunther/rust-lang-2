@@ -6,7 +6,7 @@ fn unexpected_end_of_string() {
 
     assert_matches!(
         lexer.strip_strings(Block::new(BlockType::Rest, String::from("Hello, \"there \"        \" ").chars().collect(), 0)),
-        Err(Error { error_type: ErrorType::LexerError(LexerErrorType::UnexpectedEndOfString), pos: 24, width: 2, .. })
+        Err(Error { error_type: ErrorType::LexerError(LexerErrorType::UnexpectedEndOfString), pos: 23, width: 1, .. })
     );
 }
 

@@ -13,6 +13,7 @@ pub enum Token {
     FSlash,
     Plus,
     Asterix,
+    DoubleAsterix,
     Minus,
     Equals,
 }
@@ -26,6 +27,7 @@ lazy_static! {
         "/" => FSlash,
         "+" => Plus,
         "*" => Asterix,
+        "**" => DoubleAsterix,
         "-" => Minus,
         "=" => Equals
     };

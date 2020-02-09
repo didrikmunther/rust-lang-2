@@ -76,7 +76,9 @@ impl Lexer {
     }
 
     fn get_token(&self, content: &str, offset: usize) -> Option<Block> {
-        for (symbol, token) in self.tokens.iter() {
+        let len = content.len();
+        
+        for (symbol, token) in self.tokens.iter().filter(|(s, _)| s.len() <= len) {
             let slice = &content[..symbol.len()];
             if *slice == **symbol {
                 return Some(Block::new(BlockType::Token(token.clone()), String::from(slice), offset));
