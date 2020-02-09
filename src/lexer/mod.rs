@@ -135,7 +135,10 @@ impl Lexer {
                 i += identifier.width;
                 result.push_back(identifier);
             } else {
-                return Err(Error::new(block.offset + i, 0, ErrorType::LexerError(LexerErrorType::UnknownToken)));
+                return Err(
+                    Error::new(block.offset + i, 1, ErrorType::LexerError(LexerErrorType::UnknownToken))
+                        .with_help(String::from("this token is not recognized"))
+                );
             }
         }
     
@@ -227,7 +230,6 @@ impl Lexer {
         let mut is_comment = false;
     
         let mut positions: Vec<usize> = vec![];
-        let len = block.content.len();
     
         let mut result = LinkedList::<Block>::new();
         let mut buf: String = String::new();
@@ -283,7 +285,10 @@ impl Lexer {
         let last_pos = get_last(&positions);
     
         if is_string {
-            return Err(Error::new(block.offset + last_pos, len - last_pos + 1, ErrorType::LexerError(LexerErrorType::UnexpectedEndOfString)));
+            return Err(
+                Error::new(block.offset + last_pos - 1, 1, ErrorType::LexerError(LexerErrorType::UnexpectedEndOfString))
+                    .with_help(String::from("unclosed quotation mark"))
+            );
         }
     
         if buf.len() >= 1 {
