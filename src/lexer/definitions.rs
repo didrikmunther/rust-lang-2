@@ -16,6 +16,11 @@ pub enum Token {
     DoubleAsterix,
     Minus,
     Equals,
+    DoubleEquals,
+    MinusEquals,
+    PlusEquals,
+    OpenPar,
+    ClosedPar
 }
 
 lazy_static! {
@@ -29,6 +34,11 @@ lazy_static! {
         "*" => Asterix,
         "**" => DoubleAsterix,
         "-" => Minus,
-        "=" => Equals
+        "=" => Equals,
+        "==" => DoubleEquals,
+        "-=" => MinusEquals,
+        "+=" => PlusEquals,
+        "(" => OpenPar,
+        ")" => ClosedPar,
     };
 }

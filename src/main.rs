@@ -1,27 +1,37 @@
 use lang::*;
 
-fn main() {
+use ::std::io;
+
+use lexer::BlockType;
+use parser::Parser;
+use error::Error;
+
+fn run(code: &str) -> Result<String, Error> {
     let lexer = lexer::Lexer::new();
+    // let parser = parser::Parser::new();
 
-    // println!("{:#?}", lexer.lex(String::from("
-    //     Hello, \"the//re \" handsome // this is a comment
-    //     //2nd comment \"string 2\"
-    // ")))
+    let lexed = lexer.lex(String::from(code))?;
+    let lexed_res = lexed.into_iter().map(|v| v.block_type).collect::<Vec<BlockType>>();
 
-    let code = "
-        a = 5 + 5 - 6 / 2 ** 1 ()
-    ";
-    // let code = "Hello, \"there   \"       asdf  \"   a 
-    //     asdf
-    // ";
+    // let parsed = parser.parse
 
-    let res = lexer.lex(String::from(code));
+    // Ok(String::from("Ok"))
+    Ok(format!("{:?}", lexed_res))
+}
 
-    match res {
-        Ok(res) => println!("{:#?}", res),
-        Err(err) => println!("{}", err
-            .with_code(String::from(code))
-            .with_file(String::from("src/main.lang"))
-        )
-    };
+fn main() {  
+    loop {
+        print!("> ");
+
+        let mut buf = String::new();
+        std::io::stdin().read_line(&mut buf).expect("Could not read user input.");
+
+        match run(buf.as_ref()) {
+            Ok(res) => println!("{}", res),
+            Err(err) => println!("{}", err
+                .with_code(String::from(buf))
+                .with_file(String::from("src/main.lang"))
+            )
+        };
+    }
 }

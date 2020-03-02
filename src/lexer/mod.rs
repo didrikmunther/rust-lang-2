@@ -7,9 +7,9 @@ use super::error::*;
 mod test;
 
 mod definitions;
-use definitions::*;
+pub use definitions::*;
 
-type LexerResult = Result<LinkedList<Block>, Error>;
+pub type LexerResult = Result<LinkedList<Block>, Error>;
 
 #[derive(Debug)]
 pub enum BlockType {
@@ -17,18 +17,23 @@ pub enum BlockType {
     Comment,
 
     Identifier(String),
-    LiteralString(String),
-    LiteralInt(i32),
-    LiteralFloat(f32),
+    Literal(Literal),
     Token(Token)
 }
 
 #[derive(Debug)]
+pub enum Literal {
+    String(String),
+    Int(i32),
+    Float(f32),
+}
+
+#[derive(Debug)]
 pub struct Block {
-    block_type: BlockType,
-    content: String,
-    offset: usize,
-    width: usize
+    pub block_type: BlockType,
+    pub content: String,
+    pub offset: usize,
+    pub width: usize
 }
 
 impl Block {
@@ -58,7 +63,7 @@ impl Lexer {
 
         Lexer {
             tokens,
-            identifier_re: Regex::new(r"[a-zA-Z_]+$").unwrap()
+            identifier_re: Regex::new(r"(^[a-zA-Z_][0-9a-zA-Z_]+$)|(^[a-zA-Z_]+$)").unwrap()
         }
     }
 
@@ -108,9 +113,9 @@ impl Lexer {
         while i > 0 {
             let slice = &content[..i];
             if let Ok(i) = slice.parse::<i32>() {
-                return Some(Block::new(BlockType::LiteralInt(i), String::from(slice), offset))
-            } else if let Ok(i) = slice.parse::<f32>() {
-                return Some(Block::new(BlockType::LiteralFloat(i), String::from(slice), offset))
+                return Some(Block::new(BlockType::Literal(Literal::Int(i)), String::from(slice), offset))
+            } else if let Ok(f) = slice.parse::<f32>() {
+                return Some(Block::new(BlockType::Literal(Literal::Float(f)), String::from(slice), offset))
             }
             i -= 1;
         }
@@ -266,7 +271,7 @@ impl Lexer {
                 '"' => {
                     if !escaped {
                         result.push_back(Block::new(
-                            if is_string { BlockType::LiteralString(buf.clone()) } else { BlockType::Rest },
+                            if is_string { BlockType::Literal(Literal::String(buf.clone())) } else { BlockType::Rest },
                             buf,
                             block.offset + get_last(&positions)
                         ));
@@ -296,7 +301,7 @@ impl Lexer {
         if buf.len() >= 1 {
             result.push_back(Block::new(BlockType::Rest, buf, block.offset + last_pos));
         }
-    
+
         Ok(result)
     }
 

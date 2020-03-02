@@ -25,7 +25,7 @@ fn removes_strings() {
         width: 7, ..
     });
     assert_matches!(unwrapped.next().unwrap(), Block {
-        block_type: BlockType::LiteralString(_),
+        block_type: BlockType::Literal(Literal::String(_)),
         offset: 8,
         width: 6, ..
     });
@@ -54,7 +54,7 @@ fn comments_work() {
     });
 
     assert_matches!(unwrapped.next().unwrap(), Block {
-        block_type: BlockType::LiteralString(_),
+        block_type: BlockType::Literal(Literal::String(_)),
         offset: 8,
         width: 8, ..
     });
