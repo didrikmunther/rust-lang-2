@@ -4,8 +4,15 @@ use Token::*;
 
 type Definition<T> = HashMap<&'static str, T>;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Token {
+    EOF,
+    SOF,
+    Identifier,
+    Literal,
+    Rest,
+    Comment,
+
     Space,
     Tab,
     NewLine,

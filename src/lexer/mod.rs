@@ -1,4 +1,5 @@
 use std::collections::LinkedList;
+// use linked_list::LinkedList;
 use regex::Regex;
 
 use super::error::*;
@@ -31,15 +32,21 @@ pub enum Literal {
 #[derive(Debug)]
 pub struct Block {
     pub block_type: BlockType,
+    pub token: Token,
     pub content: String,
     pub offset: usize,
     pub width: usize
 }
 
 impl Block {
-    pub fn new(block_type: BlockType, content: String, offset: usize) -> Self {
+    pub fn new(
+        block_type: BlockType,
+        token: Token,
+        content: String,
+        offset: usize
+    ) -> Self {
         let width = content.len();
-        Block { block_type, content, offset, width }
+        Block { block_type, token, content, offset, width }
     }
 }
 
@@ -86,7 +93,12 @@ impl Lexer {
         for (symbol, token) in self.tokens.iter().filter(|(s, _)| s.len() <= len) {
             let slice = &content[..symbol.len()];
             if *slice == **symbol {
-                return Some(Block::new(BlockType::Token(token.clone()), String::from(slice), offset));
+                return Some(Block::new(
+                    BlockType::Token(token.clone()),
+                    token.clone(),
+                    String::from(slice),
+                    offset
+                ));
             }
         }
 
@@ -99,7 +111,12 @@ impl Lexer {
         while i > 0 {
             let slice = &content[..i];
             if self.identifier_re.is_match(slice) {
-                return Some(Block::new(BlockType::Identifier(String::from(slice)), String::from(slice), offset))
+                return Some(Block::new(
+                    BlockType::Identifier(String::from(slice)),
+                    Token::Identifier,
+                    String::from(slice),
+                    offset
+                ));
             }
             i -= 1;
         }
@@ -113,9 +130,19 @@ impl Lexer {
         while i > 0 {
             let slice = &content[..i];
             if let Ok(i) = slice.parse::<i32>() {
-                return Some(Block::new(BlockType::Literal(Literal::Int(i)), String::from(slice), offset))
+                return Some(Block::new(
+                    BlockType::Literal(Literal::Int(i)),
+                    Token::Literal,
+                    String::from(slice),
+                    offset
+                ));
             } else if let Ok(f) = slice.parse::<f32>() {
-                return Some(Block::new(BlockType::Literal(Literal::Float(f)), String::from(slice), offset))
+                return Some(Block::new(
+                    BlockType::Literal(Literal::Float(f)),
+                    Token::Literal,
+                    String::from(slice),
+                    offset
+                ));
             }
             i -= 1;
         }
@@ -148,6 +175,20 @@ impl Lexer {
                 );
             }
         }
+
+        result.push_front(Block::new(
+            BlockType::Token(Token::SOF),
+            Token::SOF,
+            String::from(""),
+            0
+        ));
+
+        result.push_back(Block::new(
+            BlockType::Token(Token::EOF),
+            Token::EOF,
+            String::from(""),
+            i
+        ));
     
         Ok(
             result.into_iter()
@@ -186,6 +227,7 @@ impl Lexer {
                         if buf.len() > 0 {
                             result.push_back(Block::new(
                                 BlockType::Rest,
+                                Token::Rest,
                                 buf,
                                 block.offset + get_last(&positions)
                             ));
@@ -202,6 +244,7 @@ impl Lexer {
                     if is_comment {
                         result.push_back(Block::new(
                             BlockType::Comment,
+                            Token::Comment,
                             buf,
                             block.offset + get_last(&positions)
                         ));
@@ -222,6 +265,7 @@ impl Lexer {
         if buf.len() > 0 {
             result.push_back(Block::new(
                 if is_comment { BlockType::Comment } else { BlockType::Rest },
+                if is_comment { Token::Comment } else { Token::Rest },
                 buf,
                 block.offset + get_last(&positions)
             ));
@@ -272,6 +316,7 @@ impl Lexer {
                     if !escaped {
                         result.push_back(Block::new(
                             if is_string { BlockType::Literal(Literal::String(buf.clone())) } else { BlockType::Rest },
+                            if is_string { Token::Literal } else { Token::Rest },
                             buf,
                             block.offset + get_last(&positions)
                         ));
@@ -299,16 +344,27 @@ impl Lexer {
         }
     
         if buf.len() >= 1 {
-            result.push_back(Block::new(BlockType::Rest, buf, block.offset + last_pos));
+            result.push_back(Block::new(
+                BlockType::Rest,
+                Token::Rest,
+                buf,
+                block.offset + last_pos
+            ));
         }
 
         Ok(result)
     }
 
     pub fn lex(&self, query: String) -> LexerResult {
-        let w_strings = self.strip_strings(Block::new(BlockType::Rest, query.chars().collect(), 0))?;
+        let w_strings = self.strip_strings(Block::new(BlockType::Rest, Token::Rest, query.chars().collect(), 0))?;
         let w_comments = self.replace_rest(w_strings, &Self::strip_comments)?;
         let w_tokens = self.replace_rest(w_comments, &Self::tokenize)?;
+
+        // let w_eof = w_tokens.push_back(Block::new(
+        //     BlockType::Token(Token::EOF),
+        //     String::from(""),
+        //     w_tokens. 
+        // ));
     
         Ok(w_tokens)
     }

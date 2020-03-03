@@ -3,20 +3,21 @@ use lang::*;
 use ::std::io;
 
 use lexer::BlockType;
-use parser::Parser;
+use parser::{Parser, DeclarationType};
 use error::Error;
 
 fn run(code: &str) -> Result<String, Error> {
     let lexer = lexer::Lexer::new();
-    // let parser = parser::Parser::new();
+    let mut parser = parser::Parser::new();
 
     let lexed = lexer.lex(String::from(code))?;
-    let lexed_res = lexed.into_iter().map(|v| v.block_type).collect::<Vec<BlockType>>();
+    let lexed_res = lexer.lex(String::from(code))?.into_iter().map(|v| v.block_type).collect::<Vec<BlockType>>();
 
-    // let parsed = parser.parse
+    let parsed = parser.parse(&lexed)?;
+    let parsed_res = parsed.into_iter().map(|v| v.declaration_type).collect::<Vec<DeclarationType>>();
 
     // Ok(String::from("Ok"))
-    Ok(format!("{:?}", lexed_res))
+    Ok(format!("{:?}\n{:#?}", lexed_res, parsed_res))
 }
 
 fn main() {  

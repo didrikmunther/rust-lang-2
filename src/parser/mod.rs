@@ -1,103 +1,202 @@
-use linked_list::LinkedList;
-use linked_list::Cursor;
-// use std::collections::LinkedList;
+use std::collections::LinkedList;
 
 use super::error::*;
 use super::lexer::*;
 
-type Program = Result<Vec<Declaration>, Error>;
+type Program<'a> = Result<Vec<Declaration<'a>>, Error>;
+type ExpressionResult<'a> = Result<Expression<'a>, Error>;
 
-pub struct Declaration {
-    pos: usize,
+#[derive(Debug)]
+pub struct Declaration<'a> {
+    offset: usize,
     width: usize,
-    content: String,
-    declaration_type: DeclarationType,
+    content: &'a str,
+    pub declaration_type: DeclarationType<'a>,
 }
 
-pub enum DeclarationType {
-    Statement
+#[derive(Debug)]
+pub enum DeclarationType<'a> {
+    Statement(Statement<'a>)
 }
 
-pub struct Statement {
-    pos: usize,
+#[derive(Debug)]
+pub struct Statement<'a> {
+    offset: usize,
     width: usize,
-    content: String,
-    statement_type: StatementType
+    content: &'a str,
+    statement_type: StatementType<'a>
 }
 
-pub enum StatementType {
-    Expression
+#[derive(Debug)]
+pub enum StatementType<'a> {
+    Expression(Expression<'a>)
 }
 
-pub struct Expression {
-    pos: usize,
+#[derive(Debug)]
+pub struct Expression<'a> {
+    offset: usize,
     width: usize,
-    content: String,
-    expression_type: ExpressionType
+    content: &'a str,
+    expression_type: ExpressionType<'a>
 }
 
-pub enum ExpressionType {
-    Primary(Primary),
-    Binary(Box<Expression>, Block, Box<Expression>)
+#[derive(Debug)]
+pub enum ExpressionType<'a> {
+    Primary(Primary<'a>),
+    Binary(Box<Expression<'a>>, Token, Box<Expression<'a>>)
 }
 
-pub enum Primary {
-    Literal(Literal),
-    Identifier(String)
+#[derive(Debug)]
+pub enum Primary<'a> {
+    Literal(&'a Literal),
+    Identifier(&'a str)
 }
 
 pub struct Parser<'a> {
-    lexed: Option<Cursor<'a, Block>>,
-    current: Option<&'a Block>,
-    index: usize
+    index: usize,
+    lexed: Vec<&'a Block>
 }
 
 impl<'a> Parser<'a> {
+    pub fn new() -> Self {
+        Parser {
+            index: 0,
+            lexed: vec![]
+        }
+    }
 
-    
+    fn get_at(&self, index: usize) -> Option<&'a Block> {
+        self.lexed.get(index)
+            .map(|v| *v)
+    }
+ 
+    fn peek(&self) -> Option<&'a Block> {
+        self.get_at(self.index + 1)
+    }
 
-    // fn get(&mut self, tokens: &[Token]) -> Option<Block> {
-
-
-    //     // let val = self.lexed
-    //     unimplemented!()
+    // fn current(&self) -> Option<&'a Block> {
+    //     self.get_at(self.index)
     // }
 
-    // fn forward(&mut self) -> &Block {
-    //     self.current = self.lexed.unwrap().next();
-    //     self.current
-    // }
+    fn is_end(&self) -> bool {
+        self.check(Token::EOF).is_some()
+    }
 
-    // fn backward(&mut self) -> &Block {
-    //     self.current = self.lexed.unwrap().prev();
-    //     self.current
-    // }
+    fn check(&self, token: Token) -> Option<&'a Block> {
+        if token != Token::EOF && self.is_end() {
+            None
+        } else {
+            self.peek()
+                .and_then(|v| if v.token == token {
+                    Some(v)
+                } else {
+                    None
+                })
+        }
+    }
 
-    // fn primary() {
+    fn advance(&mut self) {
+        self.index += 1;
+    }
 
-    // }
+    fn get(&mut self, tokens: &'static [Token]) -> Option<&'a Block> {
+        for token in tokens {
+            if let Some(block) = self.check(*token) {
+                self.advance();
+                return Some(block);
+            }
+        }
 
-    // pub fn new() -> Self {
-    //     Parser { lexed: None, index: 0, current:  }
-    // }
+        return None;
+    }
 
-    // pub fn parse(&mut self, lexed: &'a mut LinkedList<Block>) -> Program {
-    //     self.index = 0;
-    //     self.lexed = Some(lexed.cursor());
+    fn binary(expr: Expression<'a>, right: Expression<'a>, block: &'a Block) -> Expression<'a> {
+        Expression {
+            offset: expr.offset,
+            width: right.offset + right.width - expr.offset,
+            content: &block.content,
+            expression_type: ExpressionType::Binary(Box::new(expr), block.token, Box::new(right))
+        }
+    }
 
+    fn declaration(&mut self) -> Result<Declaration, Error> {
+        let stmt = self.statement()?;
 
+        Ok(Declaration {
+            offset: stmt.offset,
+            width: stmt.width,
+            content: stmt.content,
+            declaration_type: DeclarationType::Statement(stmt)
+        })
+    }
 
-    //     self.lexed = None;
-    //     unimplemented!();
-    // }
+    fn statement(&mut self) -> Result<Statement, Error> {
+        let expr = self.expression()?;
+
+        Ok(Statement {
+            offset: expr.offset,
+            width: expr.width,
+            content: expr.content,
+            statement_type: StatementType::Expression(expr)
+        })
+    }
+
+    fn expression(&mut self) -> ExpressionResult<'a> {
+        let primary = self.addition()?;
+        Ok(primary)
+    }
+
+    fn addition(&mut self) -> ExpressionResult<'a> {
+        let mut expr = self.multiplication()?;
+
+        while let Some(block) = self.get(&[Token::Plus, Token::Minus]) {
+            expr = Parser::binary(expr, self.multiplication()?, block);
+        }
+
+        Ok(expr)
+    }
+
+    fn multiplication(&mut self) -> ExpressionResult<'a> {
+        let mut expr = self.primary()?;
+
+        while let Some(block) = self.get(&[Token::Asterix, Token::FSlash]) {
+            expr = Parser::binary(expr, self.primary()?, block);
+        }
+
+        Ok(expr)
+    }
+
+    fn primary(&mut self) -> ExpressionResult<'a> {
+        if let Some(block) = self.get(&[Token::Literal, Token::Identifier]) {
+            Ok(Expression {
+                offset: block.offset,
+                width: block.width,
+                content: &block.content,
+                expression_type: match block.block_type {
+                    BlockType::Literal(ref literal) => ExpressionType::Primary(Primary::Literal(literal)),
+                    BlockType::Identifier(ref identifier) => ExpressionType::Primary(Primary::Identifier(identifier)),
+                    _ => return Err(Error::new(0, 0, ErrorType::Unknown))
+                }
+            })
+        } else {
+            let (offset, width) = self.peek()
+                .map(|v| (v.offset, v.width))
+                .or(Some((0, 0)))
+                .unwrap();
+            
+            Err(Error::new(offset, width, ErrorType::ParserError(ParserErrorType::ExpectedPrimary)))
+        }
+    }
+
+    pub fn parse(&mut self, lexed: &'a LinkedList<Block>) -> Program {
+        self.index = 0;
+        self.lexed = lexed.into_iter()
+            .collect::<Vec<&'a Block>>();
+
+        let mut program: Vec<Declaration> = vec![];
+
+        program.push(self.declaration()?);
+
+        return Ok(program);
+    }
 }
-
-// fn addition() {
-//     let mut expr = next()?;
-
-//     while let Some(operator) = self.do_match(&[Asterix, Slash]) {
-//         expr = Expression::Binary(Box::new(expr), operator, next());
-//     }
-    
-//     Ok(expr)
-// }

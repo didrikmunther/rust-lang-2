@@ -5,7 +5,12 @@ fn unexpected_end_of_string() {
     let lexer = Lexer::new();
 
     assert_matches!(
-        lexer.strip_strings(Block::new(BlockType::Rest, String::from("Hello, \"there \"        \" ").chars().collect(), 0)),
+        lexer.strip_strings(Block::new(
+            BlockType::Rest,
+            Token::Rest,
+            String::from("Hello, \"there \"        \" ").chars().collect(),
+            0
+        )),
         Err(Error { error_type: ErrorType::LexerError(LexerErrorType::UnexpectedEndOfString), pos: 23, width: 1, .. })
     );
 }
@@ -14,7 +19,12 @@ fn unexpected_end_of_string() {
 fn removes_strings() {
     let lexer = Lexer::new();
 
-    let result = lexer.strip_strings(Block::new(BlockType::Rest, String::from("Hello, \"there \" handsome").chars().collect(), 0));
+    let result = lexer.strip_strings(Block::new(
+        BlockType::Rest,
+        Token::Rest,
+        String::from("Hello, \"there \" handsome").chars().collect(),
+        0
+    ));
     assert!(result.is_ok());
 
     let mut unwrapped = result.unwrap().into_iter();
@@ -40,7 +50,12 @@ fn removes_strings() {
 fn comments_work() {
     let lexer = Lexer::new();
 
-    let wo_strings = lexer.strip_strings(Block::new(BlockType::Rest, String::from("Hello, \"the//re \" handsome // this is a comment\n//2nd comment \"string 2\"").chars().collect(), 0));
+    let wo_strings = lexer.strip_strings(Block::new(
+        BlockType::Rest,
+        Token::Rest,
+        String::from("Hello, \"the//re \" handsome // this is a comment\n//2nd comment \"string 2\"").chars().collect(),
+        0
+    ));
     assert!(wo_strings.is_ok());
     let result = lexer.replace_rest(wo_strings.unwrap(), &Lexer::strip_comments);
     assert!(result.is_ok());

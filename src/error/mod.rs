@@ -7,8 +7,15 @@ pub enum LexerErrorType {
 }
 
 #[derive(Debug)]
+pub enum ParserErrorType {
+    ExpectedPrimary
+}
+
+#[derive(Debug)]
 pub enum ErrorType {
-    LexerError(LexerErrorType)
+    LexerError(LexerErrorType),
+    ParserError(ParserErrorType),
+    Unknown
 }
 
 #[derive(Debug)]
