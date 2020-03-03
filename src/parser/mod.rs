@@ -129,45 +129,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn program(&mut self) -> Result<Program<'a>, Error> {
-        let mut program = vec![];
-
-        while !self.is_end() {
-            program.push(self.declaration()?);
-        }
-
-        return Ok(program);
-    }
-
-    fn declaration(&mut self) -> Result<Declaration<'a>, Error> {
-        let stmt = self.statement()?;
-
-        Ok(Declaration {
-            offset: stmt.offset,
-            width: stmt.width,
-            content: stmt.content,
-            declaration_type: DeclarationType::Statement(stmt)
-        })
-    }
-
-    fn statement(&mut self) -> Result<Statement<'a>, Error> {
-        let expr = self.expression()?;
-
-        Ok(Statement {
-            offset: expr.offset,
-            width: expr.width,
-            content: expr.content,
-            end: self.get(&[Token::SemiColon]).is_some(),
-            statement_type: StatementType::Expression(expr)
-        })
-    }
-
-    fn expression(&mut self) -> ExpressionResult<'a> {
-        let primary = self.function()?;
-        Ok(primary)
-    }
-
-    fn match_function(&mut self) -> Result<Option<Expression<'a>>, Error> {
+    fn match_lambda(&mut self) -> Result<Option<Expression<'a>>, Error> {
         let start;
         let mut args: Vec<&'a str> = vec![];
 
@@ -221,10 +183,58 @@ impl<'a> Parser<'a> {
         }))
     }
 
+    fn program(&mut self) -> Result<Program<'a>, Error> {
+        let mut program = vec![];
+
+        while !self.is_end() {
+            program.push(self.declaration()?);
+        }
+
+        return Ok(program);
+    }
+
+    fn declaration(&mut self) -> Result<Declaration<'a>, Error> {
+        let stmt = self.statement()?;
+
+        Ok(Declaration {
+            offset: stmt.offset,
+            width: stmt.width,
+            content: stmt.content,
+            declaration_type: DeclarationType::Statement(stmt)
+        })
+    }
+
+    fn statement(&mut self) -> Result<Statement<'a>, Error> {
+        let expr = self.expression()?;
+
+        Ok(Statement {
+            offset: expr.offset,
+            width: expr.width,
+            content: expr.content,
+            end: self.get(&[Token::SemiColon]).is_some(),
+            statement_type: StatementType::Expression(expr)
+        })
+    }
+
+    fn expression(&mut self) -> ExpressionResult<'a> {
+        let primary = self.assign()?;
+        Ok(primary)
+    }
+
+    fn assign(&mut self) -> ExpressionResult<'a> {
+        let mut expr = self.function()?;
+
+        while let Some(block) = self.get(&[Token::Equals]) {
+            expr = Parser::binary(expr, self.function()?, block);
+        }
+
+        Ok(expr)
+    }
+
     fn function(&mut self) -> ExpressionResult<'a> {
         let reverse = self.index;
 
-        if let Some(function) = self.match_function()? {
+        if let Some(function) = self.match_lambda()? {
             return Ok(function);
         } else {
             self.reverse(reverse);
