@@ -3,7 +3,8 @@ use std::collections::LinkedList;
 use super::error::*;
 use super::lexer::*;
 
-type Program<'a> = Result<Vec<Declaration<'a>>, Error>;
+type Program<'a> = Vec<Declaration<'a>>;
+// type Program<'a> = Result<Program, Error>;
 type ExpressionResult<'a> = Result<Expression<'a>, Error>;
 
 #[derive(Debug)]
@@ -44,7 +45,11 @@ pub struct Expression<'a> {
 #[derive(Debug)]
 pub enum ExpressionType<'a> {
     Primary(Primary<'a>),
-    Binary(Box<Expression<'a>>, Token, Box<Expression<'a>>)
+    Binary(Box<Expression<'a>>, Token, Box<Expression<'a>>),
+    Function {
+        args: Vec<&'a str>,
+        body: Program<'a>
+    }
 }
 
 #[derive(Debug)]
@@ -73,6 +78,10 @@ impl<'a> Parser<'a> {
  
     fn peek(&self) -> Option<&'a Block> {
         self.get_at(self.index + 1)
+    }
+
+    fn reverse(&mut self, index: usize) {
+        self.index = index;
     }
 
     // fn current(&self) -> Option<&'a Block> {
@@ -120,6 +129,16 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn program(&mut self) -> Result<Program<'a>, Error> {
+        let mut program = vec![];
+
+        while !self.is_end() {
+            program.push(self.declaration()?);
+        }
+
+        return Ok(program);
+    }
+
     fn declaration(&mut self) -> Result<Declaration<'a>, Error> {
         let stmt = self.statement()?;
 
@@ -144,8 +163,73 @@ impl<'a> Parser<'a> {
     }
 
     fn expression(&mut self) -> ExpressionResult<'a> {
-        let primary = self.addition()?;
+        let primary = self.function()?;
         Ok(primary)
+    }
+
+    fn match_function(&mut self) -> Result<Option<Expression<'a>>, Error> {
+        let start;
+        let mut args: Vec<&'a str> = vec![];
+
+        if let Some(parenthesis) = self.get(&[Token::ParOpen]) {
+            start = parenthesis.offset;
+            while let Some(arg) = self.get(&[Token::Identifier]) {
+                args.push(&arg.content);
+                if let None = self.get(&[Token::Comma]) {
+                    break;
+                }
+            }
+            if let None = self.get(&[Token::ParClosed]) {
+                return Ok(None);
+            }
+        } else if let Some(arg) = self.get(&[Token::Identifier]) {
+            start = arg.offset;
+            args.push(&arg.content);
+        } else {
+            return Ok(None);
+        }
+
+        if let None = self.get(&[Token::Lambda]) {
+            return Ok(None);
+        }
+
+        let end: usize;
+        let body = if let Some(_) = self.get(&[Token::BracketOpen]) {
+            let program = self.program()?;
+
+            if let Some(bracket) = self.get(&[Token::BracketClosed]) {
+                end = bracket.offset + bracket.width;
+            } else {
+                return Ok(None);
+            }
+
+            program
+        } else {
+            let declaration = self.declaration()?;
+            end = declaration.offset + declaration.width;
+            vec![declaration]
+        };
+
+        Ok(Some(Expression {
+            offset: start,
+            width: end - start,
+            content: "",
+            expression_type: ExpressionType::Function {
+                args,
+                body
+            }
+        }))
+    }
+
+    fn function(&mut self) -> ExpressionResult<'a> {
+        let reverse = self.index;
+
+        if let Some(function) = self.match_function()? {
+            return Ok(function);
+        } else {
+            self.reverse(reverse);
+            return self.addition();
+        }
     }
 
     fn addition(&mut self) -> ExpressionResult<'a> {
@@ -181,7 +265,7 @@ impl<'a> Parser<'a> {
                 }
             })
         } else {
-            print!("{:?}\n", self.peek());
+            // print!("{:?}\n", self.peek());
 
             let (offset, width) = self.peek()
                 .map(|v| (v.offset, v.width))
@@ -201,16 +285,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self, lexed: &'a LinkedList<Block>) -> Program<'a> {
+    pub fn parse(&mut self, lexed: &'a LinkedList<Block>) -> Result<Program<'a>, Error> {
         self.index = 0;
         self.lexed = lexed.into_iter()
             .collect::<Vec<&'a Block>>();
 
-        let mut program: Vec<Declaration<'a>> = vec![];
-
-        while !self.is_end() {
-            program.push(self.declaration()?);
-        }
+        let program: Program<'a> = self.program()?;
 
         return Ok(program);
     }

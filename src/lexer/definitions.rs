@@ -26,9 +26,14 @@ pub enum Token {
     DoubleEquals,
     MinusEquals,
     PlusEquals,
-    OpenPar,
-    ClosedPar,
-    SemiColon
+    ParClosed,
+    ParOpen,
+    BracketClosed,
+    BracketOpen,
+    SemiColon,
+    Comma,
+    Dot,
+    Lambda
 }
 
 lazy_static! {
@@ -46,8 +51,13 @@ lazy_static! {
         "==" => DoubleEquals,
         "-=" => MinusEquals,
         "+=" => PlusEquals,
-        "(" => OpenPar,
-        ")" => ClosedPar,
-        ";" => SemiColon
+        "(" => ParOpen,
+        ")" => ParClosed,
+        "{" => BracketOpen,
+        "}" => BracketClosed,
+        ";" => SemiColon,
+        "," => Comma,
+        "." => Dot,
+        "=>" => Lambda
     };
 }

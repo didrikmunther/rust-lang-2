@@ -28,12 +28,15 @@ fn main() {
         let mut buf = String::new();
         std::io::stdin().read_line(&mut buf).expect("Could not read user input.");
 
-        match run(buf.as_ref()) {
-            Ok(res) => println!("{}", res),
-            Err(err) => println!("{}", err
-                .with_code(String::from(buf))
-                .with_file(String::from("src/main.lang"))
-            )
+        match buf.as_ref() {
+            "quit\n" => break,
+            _ => match run(buf.as_ref()) {
+                Ok(res) => println!("{}", res),
+                Err(err) => println!("{}", err
+                    .with_code(String::from(buf))
+                    .with_file(String::from("src/main.lang"))
+                )
+            }
         };
     }
 }
