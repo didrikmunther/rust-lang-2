@@ -1,9 +1,9 @@
 use lang::*;
 
-use ::std::io;
+use ::std::io::{Write};
 
 use lexer::BlockType;
-use parser::{Parser, DeclarationType};
+use parser::DeclarationType;
 use error::Error;
 
 fn run(code: &str) -> Result<String, Error> {
@@ -23,6 +23,7 @@ fn run(code: &str) -> Result<String, Error> {
 fn main() {  
     loop {
         print!("> ");
+        std::io::stdout().flush().expect("Flush failed.");
 
         let mut buf = String::new();
         std::io::stdin().read_line(&mut buf).expect("Could not read user input.");

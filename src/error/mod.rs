@@ -23,6 +23,7 @@ pub struct Error {
     code: Option<String>,
     file: Option<String>,
     help: Option<String>,
+    description: Option<String>,
     pub pos: usize,
     pub width: usize,
     pub error_type: ErrorType
@@ -34,6 +35,7 @@ impl Error {
             code: None,
             file: None,
             help: None,
+            description: None,
             pos,
             width,
             error_type
@@ -52,6 +54,11 @@ impl Error {
 
     pub fn with_help(mut self, help: String) -> Self {
         self.help = Some(help);
+        return self;
+    }
+
+    pub fn with_description(mut self, description: String) -> Self {
+        self.description = Some(description);
         return self;
     }
 }
@@ -77,7 +84,7 @@ fn get_line_pos(code: &str, pos: usize) -> (usize, usize, usize, usize) {
 
     for i in 0..len {
         if chars[i] == '\n' as u8 {
-            if i >= pos {
+            if i >= pos || i >= len - 1 {
                 break;
             }
 
@@ -102,20 +109,22 @@ impl fmt::Display for Error {
             return write!(f, "No code supplied for error")
         }
 
+        let empty: String = String::from("");
         let code = self.code.as_ref().unwrap();
         let (line_pos, line, indents, line_indents) = get_line_pos(code, self.pos);
 
         write!(
             f,
-            "error: {:?}\n  --> {}{}:{}\n   | {}\n   | {}{} {}",
+            "error: {:?}{}\n  --> {}{}:{}\n   | {}\n   | {}{} {}",
             self.error_type,
-            if let Some(file) = &self.file { format!("{}:", file) } else { String::from("") },
+            if let Some(description) = &self.description { format!("\n       {}", description) } else { empty.clone() },
+            if let Some(file) = &self.file { format!("{}:", file) } else { empty.clone() },
             line,
             indents,
             &code[line_pos..line_pos + line_indents],
             repeat("-", indents),
             repeat("^", self.width),
-            if let Some(help) = &self.help { format!("tip: {}", help) } else { String::from("") }
+            if let Some(help) = &self.help { format!("tip: {}", help) } else { empty.clone() }
         )
     }
 }

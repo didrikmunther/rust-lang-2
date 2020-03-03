@@ -179,14 +179,14 @@ impl Lexer {
         result.push_front(Block::new(
             BlockType::Token(Token::SOF),
             Token::SOF,
-            String::from(""),
+            String::from(" "),
             0
         ));
 
         result.push_back(Block::new(
             BlockType::Token(Token::EOF),
             Token::EOF,
-            String::from(""),
+            String::from(" "),
             i
         ));
     

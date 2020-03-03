@@ -24,6 +24,7 @@ pub struct Statement<'a> {
     offset: usize,
     width: usize,
     content: &'a str,
+    end: bool, // ended with a semicolon
     statement_type: StatementType<'a>
 }
 
@@ -119,7 +120,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn declaration(&mut self) -> Result<Declaration, Error> {
+    fn declaration(&mut self) -> Result<Declaration<'a>, Error> {
         let stmt = self.statement()?;
 
         Ok(Declaration {
@@ -130,13 +131,14 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn statement(&mut self) -> Result<Statement, Error> {
+    fn statement(&mut self) -> Result<Statement<'a>, Error> {
         let expr = self.expression()?;
 
         Ok(Statement {
             offset: expr.offset,
             width: expr.width,
             content: expr.content,
+            end: self.get(&[Token::SemiColon]).is_some(),
             statement_type: StatementType::Expression(expr)
         })
     }
@@ -179,23 +181,36 @@ impl<'a> Parser<'a> {
                 }
             })
         } else {
+            print!("{:?}\n", self.peek());
+
             let (offset, width) = self.peek()
                 .map(|v| (v.offset, v.width))
                 .or(Some((0, 0)))
                 .unwrap();
             
-            Err(Error::new(offset, width, ErrorType::ParserError(ParserErrorType::ExpectedPrimary)))
+            Err(
+                Error::new(offset, width, ErrorType::ParserError(ParserErrorType::ExpectedPrimary))
+                    .with_description(format!(
+                        "Expected primary instead of: {}",
+                        self.peek()
+                            .map(|v| format!("{:?}", v.block_type))
+                            .or(Some(String::from("Unknown block")))
+                            .unwrap()
+                    ))
+            )
         }
     }
 
-    pub fn parse(&mut self, lexed: &'a LinkedList<Block>) -> Program {
+    pub fn parse(&mut self, lexed: &'a LinkedList<Block>) -> Program<'a> {
         self.index = 0;
         self.lexed = lexed.into_iter()
             .collect::<Vec<&'a Block>>();
 
-        let mut program: Vec<Declaration> = vec![];
+        let mut program: Vec<Declaration<'a>> = vec![];
 
-        program.push(self.declaration()?);
+        while !self.is_end() {
+            program.push(self.declaration()?);
+        }
 
         return Ok(program);
     }

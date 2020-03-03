@@ -27,7 +27,8 @@ pub enum Token {
     MinusEquals,
     PlusEquals,
     OpenPar,
-    ClosedPar
+    ClosedPar,
+    SemiColon
 }
 
 lazy_static! {
@@ -47,5 +48,6 @@ lazy_static! {
         "+=" => PlusEquals,
         "(" => OpenPar,
         ")" => ClosedPar,
+        ";" => SemiColon
     };
 }
