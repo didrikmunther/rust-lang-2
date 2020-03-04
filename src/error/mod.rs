@@ -8,6 +8,8 @@ pub enum LexerErrorType {
 
 #[derive(Debug)]
 pub enum ParserErrorType {
+    Unknown,
+    
     UnexpectedToken,
     UnclosedParenthesis,
     UnclosedBracket
@@ -23,6 +25,7 @@ pub enum VMErrorType {
     NotImplemented,
     StackElementUninitialized,
     OperationNotSupported,
+    AssignToNonVariable,
     StackOverflow {
         stack_size: usize,
         index: i32

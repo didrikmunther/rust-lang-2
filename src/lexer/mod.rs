@@ -24,9 +24,10 @@ pub enum BlockType {
 
 #[derive(Debug)]
 pub enum Literal {
+    Null,
     String(String),
     Int(i32),
-    Float(f64),
+    Float(f64)
 }
 
 #[derive(Debug)]
@@ -139,6 +140,13 @@ impl Lexer {
             } else if let Ok(f) = slice.parse::<f64>() {
                 return Some(Block::new(
                     BlockType::Literal(Literal::Float(f)),
+                    Token::Literal,
+                    String::from(slice),
+                    offset
+                ));
+            } else if "null" == slice {
+                return Some(Block::new(
+                    BlockType::Literal(Literal::Null),
                     Token::Literal,
                     String::from(slice),
                     offset

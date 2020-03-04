@@ -6,26 +6,50 @@ use lexer::BlockType;
 use parser::DeclarationType;
 use error::Error;
 
-fn run(code: &str) -> Result<String, Error> {
-    let lexer = lexer::Lexer::new();
-    let mut parser = parser::Parser::new();
-    let mut compiler = compiler::Compiler::new();
-    let mut vm = vm::VM::new();
-
-    let lexed = lexer.lex(String::from(code))?;
-    let lexed_res = lexer.lex(String::from(code))?.into_iter().map(|v| v.block_type).collect::<Vec<BlockType>>();
-
-    let parsed = parser.parse(&lexed)?;
-    let parsed_res = parser.parse(&lexed)?.into_iter().map(|v| v.declaration_type).collect::<Vec<DeclarationType>>();
-
-    let compiled = compiler.compile(&parsed)?;
-
-    let executed = vm.exec(&compiler.compile(&parsed)?)?;
-
-    Ok(format!("{:#?}\n{:#?}\n{:#?}\n{:?}", lexed_res, parsed_res, compiled, executed))
+struct Lang {
+    vm: vm::VM,
+    is_debug: bool
 }
 
-fn main() {  
+impl Lang {
+    pub fn new() -> Self {
+        Lang {
+            vm: vm::VM::new(),
+            is_debug: false
+        }
+    }
+
+    pub fn debug(&mut self, debug: bool) -> &mut Self {
+        self.is_debug = debug;
+        self
+    }
+
+    pub fn run(&mut self, code: &str) -> Result<String, Error> {
+        let lexer = lexer::Lexer::new();
+        let mut parser = parser::Parser::new();
+        let mut compiler = compiler::Compiler::new();
+
+        let code = String::from(code);
+
+        let lexed = lexer.lex(code.clone())?;
+        let parsed = parser.parse(&lexed)?;
+        let compiled = compiler.compile(&parsed)?;
+        let executed = self.vm.exec(&compiler.compile(&parsed)?)?;
+    
+        if self.is_debug {
+            let lexed_res = lexer.lex(String::from(code.clone()))?.into_iter().map(|v| v.block_type).collect::<Vec<BlockType>>();
+            let parsed_res = parser.parse(&lexed)?.into_iter().map(|v| v.declaration_type).collect::<Vec<DeclarationType>>();
+            Ok(format!("{:#?}\n{:#?}\n{:#?}\n{}", lexed_res, parsed_res, compiled, executed))
+        } else {
+            Ok(format!("{}", executed))
+        }
+    }
+}
+
+fn main() {
+    let mut lang = Lang::new();
+    let mut debug = false;
+
     loop {
         print!("> ");
         std::io::stdout().flush().expect("Flush failed.");
@@ -35,7 +59,11 @@ fn main() {
 
         match buf.as_ref() {
             "quit\n" => break,
-            _ => match run(buf.as_ref()) {
+            "debug\n" => {
+                debug = !debug;
+                println!("Debug is [{}]", debug);
+            },
+            _ => match lang.debug(debug).run(buf.as_ref()) {
                 Ok(res) => println!("{}", res),
                 Err(err) => println!("{}", err
                     .with_code(String::from(buf))

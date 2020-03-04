@@ -70,9 +70,15 @@ impl Compiler {
     }
 
     fn statement(&mut self, statement: &Statement) -> ProgramResult {
-        match &statement.statement_type {
-            StatementType::Expression(expression) => self.expression(&expression)
+        let mut stmt = match &statement.statement_type {
+            StatementType::Expression(expression) => self.expression(&expression)?
+        };
+
+        if statement.end {
+            stmt = stmt.push_back(Instruction::new(statement.offset, statement.width, Code::Pop));
         }
+
+        Ok(stmt)
     }
 
     fn expression(&mut self, expr: &Expression) -> ProgramResult {
@@ -80,6 +86,7 @@ impl Compiler {
             ExpressionType::Primary(primary) => match primary {
                 Primary::Literal(literal) => {
                     Builder::from(Instruction::from_expression(&expr, match literal {
+                        Literal::Null => Code::PushNull,
                         Literal::Int(i) => Code::PushNum(*i),
                         Literal::Float(f) => Code::PushFloat(*f),
                         Literal::String(s) => Code::PushString(String::from(s))

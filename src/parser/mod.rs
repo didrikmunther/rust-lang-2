@@ -21,10 +21,10 @@ pub enum DeclarationType<'a> {
 
 #[derive(Debug)]
 pub struct Statement<'a> {
-    offset: usize,
-    width: usize,
+    pub offset: usize,
+    pub width: usize,
     content: &'a str,
-    end: bool, // ended with a semicolon
+    pub end: bool, // ended with a semicolon
     pub statement_type: StatementType<'a>
 }
 
@@ -336,6 +336,11 @@ impl<'a> Parser<'a> {
         self.lexed = lexed.into_iter()
             .collect::<Vec<&'a Block>>();
 
-        return Ok(self.ast()?);
+        let res = self.ast()?;
+
+        self.lexed = Vec::new();
+        self.index = 0;
+
+        return Ok(res);
     }
 }

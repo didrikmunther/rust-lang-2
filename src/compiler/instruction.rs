@@ -45,7 +45,10 @@ pub enum Code {
     Multiply,
     Divide,
     Assign,
+    
+    Pop,
 
+    PushNull,
     PushNum(i32),
     PushFloat(f64),
     PushString(String),
