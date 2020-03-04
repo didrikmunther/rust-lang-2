@@ -155,17 +155,18 @@ impl Lexer {
     
         let mut i: usize = 0;
         let len = block.content.len();
+        let offset = block.offset;
     
         while i < len {
             let slice = &block.content[i..];
 
-            if let Some(token) = self.get_token(slice, i) {
+            if let Some(token) = self.get_token(slice, i + offset) {
                 i += token.width;
                 result.push_back(token);
-            } else if let Some(literal) = self.get_literal(slice, i) {
+            } else if let Some(literal) = self.get_literal(slice, i + offset) {
                 i += literal.width;
                 result.push_back(literal);
-            } else if let Some(identifier) = self.get_identifier(slice, i) {
+            } else if let Some(identifier) = self.get_identifier(slice, i + offset) {
                 i += identifier.width;
                 result.push_back(identifier);
             } else {
@@ -175,13 +176,6 @@ impl Lexer {
                 );
             }
         }
-
-        result.push_back(Block::new(
-            BlockType::Token(Token::EOF),
-            Token::EOF,
-            String::from(" "),
-            i
-        ));
     
         Ok(
             result.into_iter()
@@ -337,6 +331,7 @@ impl Lexer {
         }
     
         if buf.len() >= 1 {
+            // println!("{}, {}, {}", buf, block.offset, last_pos);
             result.push_back(Block::new(
                 BlockType::Rest,
                 Token::Rest,
@@ -356,8 +351,18 @@ impl Lexer {
         w_tokens.push_front(Block::new(
             BlockType::Token(Token::SOF),
             Token::SOF,
-            String::from(" "),
+            String::from(""),
             0
+        ));
+
+        let last = w_tokens.back().unwrap();
+        let (offset, width) = (last.offset, last.width);
+
+        w_tokens.push_back(Block::new(
+            BlockType::Token(Token::EOF),
+            Token::EOF,
+            String::from(""),
+            offset + width + 1
         ));
     
         Ok(w_tokens)

@@ -43,7 +43,8 @@ impl Pool {
 #[derive(Debug)]
 enum Value {
     Int(i32),
-    Float(f64)
+    Float(f64),
+    String(String)
 }
 
 pub struct VM {
@@ -169,6 +170,10 @@ impl<'a> VM {
                 },
                 Code::PushFloat(f) => {
                     let val = self.pool.create(Value::Float(f));
+                    self.push(instruction, val)?;
+                },
+                Code::PushString(ref s) => {
+                    let val = self.pool.create(Value::String(String::from(s)));
                     self.push(instruction, val)?;
                 },
                 Code::Add |
