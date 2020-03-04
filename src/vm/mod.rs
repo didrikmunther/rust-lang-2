@@ -44,7 +44,13 @@ impl Pool {
 enum Value {
     Int(i32),
     Float(f64),
-    String(String)
+    String(String),
+
+    Variable {
+        identifier: String,
+        offset: usize,
+        width: usize
+    }
 }
 
 pub struct VM {
@@ -181,7 +187,14 @@ impl<'a> VM {
                 Code::Multiply |
                 Code::Divide => self.compute_two_operands(instruction)?,
 
-                // Code::PushVar => {},
+                Code::PushVar(ref identifier) => {
+                    let val = self.pool.create(Value::Variable {
+                        identifier: String::from(identifier),
+                        offset: instruction.offset,
+                        width: instruction.width
+                    });
+                    self.push(instruction, val)?;
+                },
 
                 _ => return Err(
                     unimplemented(instruction.offset, instruction.width)

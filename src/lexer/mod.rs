@@ -361,7 +361,7 @@ impl Lexer {
         w_tokens.push_back(Block::new(
             BlockType::Token(Token::EOF),
             Token::EOF,
-            String::from(""),
+            String::from(" "),
             offset + width + 1
         ));
     
