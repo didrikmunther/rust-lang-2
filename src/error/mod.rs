@@ -21,6 +21,8 @@ pub enum CompilerErrorType {
 #[derive(Debug)]
 pub enum VMErrorType {
     NotImplemented,
+    StackElementUninitialized,
+    OperationNotSupported,
     StackOverflow {
         stack_size: usize,
         index: i32

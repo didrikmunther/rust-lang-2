@@ -39,7 +39,8 @@ fn main() {
                 Ok(res) => println!("{}", res),
                 Err(err) => println!("{}", err
                     .with_code(String::from(buf))
-                    .with_file(String::from("src/main.lang"))
+                    .with_file(String::from("[interactive shell]"))
+                    // .with_file(String::from("src/main.lang"))
                 )
             }
         };
