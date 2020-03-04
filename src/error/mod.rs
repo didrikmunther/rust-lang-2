@@ -14,9 +14,15 @@ pub enum ParserErrorType {
 }
 
 #[derive(Debug)]
+pub enum CompilerErrorType {
+    NotImplemented
+}
+
+#[derive(Debug)]
 pub enum ErrorType {
     LexerError(LexerErrorType),
     ParserError(ParserErrorType),
+    CompilerError(CompilerErrorType),
     Unknown
 }
 

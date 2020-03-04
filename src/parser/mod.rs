@@ -44,7 +44,13 @@ pub struct Expression<'a> {
 #[derive(Debug)]
 pub enum ExpressionType<'a> {
     Primary(Primary<'a>),
-    Binary(Box<Expression<'a>>, Token, Box<Expression<'a>>),
+    Binary {
+        left: Box<Expression<'a>>,
+        right: Box<Expression<'a>>,
+        operator: Token,
+        offset: usize, // operator offset
+        width: usize // operator width
+    },
     Function {
         args: Vec<&'a str>,
         body: AST<'a>
@@ -120,7 +126,13 @@ impl<'a> Parser<'a> {
             offset: expr.offset,
             width: right.offset + right.width - expr.offset,
             content: &block.content,
-            expression_type: ExpressionType::Binary(Box::new(expr), block.token, Box::new(right))
+            expression_type: ExpressionType::Binary {
+                left: Box::new(expr),
+                right: Box::new(right),
+                operator: block.token,
+                offset: block.offset,
+                width: block.width
+            }
         }
     }
 

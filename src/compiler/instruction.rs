@@ -56,6 +56,10 @@ pub enum OPCode {
     END = 0x01,
 
     ADD,
+    SUBTRACT,
+    MULTIPLY,
+    DIVIDE,
+
     PUSH_NUM,
     PUSH_FLOAT,
     PUSH_STRING
