@@ -6,48 +6,54 @@ use super::super::parser::Expression;
 pub struct Instruction {
     offset: usize,
     width: usize,
-    instruction: Option<Instructions>,
-    code: OPCode
+    code: Code
 }
 
 impl Instruction {
-    pub fn new(offset: usize, width: usize, code: OPCode) -> Self {
+    pub fn new(offset: usize, width: usize, code: Code) -> Self {
         Instruction {
             offset,
             width,
-            code,
-            instruction: None
+            code
         }
     }
 
-    pub fn from_expression(expr: &Expression, code: OPCode) -> Self {
+    pub fn from_expression(expr: &Expression, code: Code) -> Self {
         Instruction::new(expr.offset, expr.width, code)
     }
 
-    pub fn with_instruction(mut self, instruction: Instructions) -> Self {
-        self.instruction = Some(instruction);
-        self
-    }
+    // pub fn to_u8(&self, mut content: Option<Vec<u8>>) -> Vec<u8> {
+    //     let mut res = vec![self.code as u8, self.offset as u8, self.width as u8];
 
-    pub fn to_u8(&self, mut content: Option<Vec<u8>>) -> Vec<u8> {
-        let mut res = vec![self.code as u8, self.offset as u8, self.width as u8];
+    //     if let Some(content) = content.as_mut() {
+    //         let a: InstructionParser = push_num;
+    //         res.append(content);
+    //     }
 
-        if let Some(content) = content.as_mut() {
-            let a: InstructionParser = push_num;
-            res.append(content);
-        }
-
-        res
-    }
+    //     res
+    // }
 }
 
-type InstructionParser = fn(&[u8]) -> Instructions;
+type InstructionParser = fn(&[u8]) -> Code;
 
 #[derive(Debug)]
-pub enum Instructions {
+pub enum Code {
+    NULL,
+    
+    ADD,
+    SUBTRACT,
+    MULTIPLY,
+    DIVIDE,
+    ASSIGN,
+
     PushNum(i32),
     PushFloat(f32),
-    PushString(String)
+    PushString(String),
+    PushVar(String),
+    PushFunction {
+        args: Vec<String>,
+        
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
@@ -59,10 +65,12 @@ pub enum OPCode {
     SUBTRACT,
     MULTIPLY,
     DIVIDE,
+    ASSIGN,
 
     PUSH_NUM,
     PUSH_FLOAT,
-    PUSH_STRING
+    PUSH_STRING,
+    PUSH_FUNCTION
 }
 
 use OPCode::*;
@@ -73,6 +81,6 @@ lazy_static! {
     };
 }
 
-fn push_num(i: &[u8]) -> Instructions {
-    Instructions::PushNum(5)
+fn push_num(i: &[u8]) -> Code {
+    Code::PushNum(5)
 }

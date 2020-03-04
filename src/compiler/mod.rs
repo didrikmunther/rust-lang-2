@@ -5,7 +5,7 @@ use super::parser::*;
 use super::lexer::*;
 
 mod instruction;
-use instruction::{Instruction, OPCode, Instructions};
+use instruction::{Instruction, Code};
 
 type Program = Vec<Instruction>;
 type ProgramResult = Result<Builder, Error>;
@@ -72,24 +72,23 @@ impl Compiler {
         Ok(match &expr.expression_type {
             ExpressionType::Primary(primary) => match primary {
                 Primary::Literal(literal) => {
-                    let (code, instruction) = match literal {
-                        Literal::Int(i) => (OPCode::PUSH_NUM, Instructions::PushNum(*i)),
-                        Literal::Float(f) => (OPCode::PUSH_FLOAT, Instructions::PushFloat(*f)),
-                        Literal::String(s) => (OPCode::PUSH_STRING, Instructions::PushString(String::from(s)))
-                    };
-
-                    Builder::from(
-                        Instruction::from_expression(&expr, code).with_instruction(instruction)
-                    )
+                    Builder::from(Instruction::from_expression(&expr, match literal {
+                        Literal::Int(i) => Code::PushNum(*i),
+                        Literal::Float(f) => Code::PushFloat(*f),
+                        Literal::String(s) => Code::PushString(String::from(s))
+                    }))
                 },
-                _ => return Err(unimplemented_expr(&expr))
+                Primary::Identifier(identifier) => {
+                    Builder::from(Instruction::from_expression(&expr, Code::PushVar(String::from(*identifier))))
+                }
             },
             ExpressionType::Binary {left, right, operator, offset, width} => {
                 let code = match operator {
-                    Token::Plus => OPCode::ADD,
-                    Token::Minus => OPCode::SUBTRACT,
-                    Token::FSlash => OPCode::DIVIDE,
-                    Token::Asterix => OPCode::MULTIPLY,
+                    Token::Plus => Code::ADD,
+                    Token::Minus => Code::SUBTRACT,
+                    Token::FSlash => Code::DIVIDE,
+                    Token::Asterix => Code::MULTIPLY,
+                    Token::Equals => Code::ASSIGN,
                     _ => return Err(
                         unimplemented(*offset, *width)
                             .with_description(format!("unimplemented operator {:?}", operator))
@@ -100,7 +99,10 @@ impl Compiler {
                     .append(self.expression(&*left)?)
                     .append(self.expression(&*right)?)
                     .push_back(Instruction::from_expression(&expr, code))
-            }
+            },
+            // ExpressionType::Function {args, body} => {
+
+            // }
             _ => return Err(unimplemented_expr(&expr))
         })
     }
