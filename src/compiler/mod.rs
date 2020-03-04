@@ -1,3 +1,5 @@
+use std::collections::LinkedList;
+
 use super::error::*;
 use super::parser::*;
 use super::lexer::*;
@@ -5,12 +7,41 @@ use super::lexer::*;
 mod instruction;
 use instruction::{Instruction, OPCode, Instructions};
 
-pub type Program = Vec<Instruction>;
-type ProgramResult = Result<Program, Error>;
+type Program = Vec<Instruction>;
+type ProgramResult = Result<Builder, Error>;
 
-pub struct Compiler {
-
+struct Builder {
+    list: LinkedList<Instruction>
 }
+
+impl Builder {
+    pub fn new() -> Self {
+        Builder { list: LinkedList::new() }
+    }
+
+    pub fn from(instruction: Instruction) -> Self {
+        let mut list = LinkedList::new();
+        list.push_back(instruction);
+
+        Builder { list }
+    }
+
+    pub fn push_back(mut self, instruction: Instruction) -> Self {
+        self.list.push_back(instruction);
+        self
+    }
+
+    pub fn append(mut self, mut builder: Builder) -> Self {
+        self.list.append(&mut builder.list);
+        self
+    }
+
+    pub fn into_iter(self) -> impl Iterator<Item = Instruction> {
+        self.list.into_iter()
+    }
+}
+
+pub struct Compiler { }
 
 fn unimplemented(offset: usize, width: usize) -> Error {
     Error::new(offset, width, ErrorType::CompilerError(CompilerErrorType::NotImplemented))
@@ -47,7 +78,9 @@ impl Compiler {
                         Literal::String(s) => (OPCode::PUSH_STRING, Instructions::PushString(String::from(s)))
                     };
 
-                    vec![Instruction::from_expression(&expr, code).with_instruction(instruction)]
+                    Builder::from(
+                        Instruction::from_expression(&expr, code).with_instruction(instruction)
+                    )
                 },
                 _ => return Err(unimplemented_expr(&expr))
             },
@@ -63,23 +96,25 @@ impl Compiler {
                     )
                 };
 
-                let mut result: Vec<Instruction> = Vec::new();
-                result.append(&mut self.expression(&*left)?);
-                result.append(&mut self.expression(&*right)?);
-                result.push(Instruction::from_expression(&expr, code));
-                result
+                Builder::new()
+                    .append(self.expression(&*left)?)
+                    .append(self.expression(&*right)?)
+                    .push_back(Instruction::from_expression(&expr, code))
             }
             _ => return Err(unimplemented_expr(&expr))
         })
     }
 
-    pub fn compile(&mut self, ast: AST) -> ProgramResult {
-        let mut program = vec![];
+    pub fn compile(&mut self, ast: AST) -> Result<Program, Error> {
+        let mut program = Builder::new();
 
         for declaration in ast {
-            program.append(&mut self.declaration(&declaration)?);
+            program = program.append(self.declaration(&declaration)?);
         }
 
-        Ok(program)
+        Ok(
+            program.into_iter()
+                .collect::<Vec<Instruction>>()
+        )
     }
 }
