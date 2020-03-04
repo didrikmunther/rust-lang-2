@@ -12,7 +12,7 @@ fn unimplemented(offset: usize, width: usize) -> Error {
 }
 
 pub struct VM {
-    stacki: usize,
+    stacki: i32,
     stack: [i32; STACK_SIZE]
 }
 
@@ -24,25 +24,50 @@ impl<'a> VM {
         }
     }
 
-    fn push(&mut self, val: i32) -> Status {
+    // Always pass the instruction responsible for the range check
+    fn check_range(&self, instruction: &'a Instruction, index: i32) -> Status {
+        if index < 0 || index >= STACK_SIZE as i32 {
+            Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::StackOverflow {
+                stack_size: STACK_SIZE as usize,
+                index
+            })).with_description(format!("Stack overflow during operation {:?}", instruction.code)))
+        } else {
+            STATUS_OK
+        }
+    }
+
+    fn push(&mut self, instruction: &'a Instruction, val: i32) -> Status {
+        self.check_range(instruction, self.stacki + 1)?;
+        
         self.stacki += 1;
-        self.stack[self.stacki] = val;
+        self.stack[self.stacki as usize] = val;
         
         STATUS_OK
     }
 
-    fn pop(&mut self) -> Result<i32, Error> {
+    fn pop(&mut self, instruction: &'a Instruction) -> Result<i32, Error> {
+        self.check_range(instruction, self.stacki - 1)?;
+
         self.stacki -= 1;
-        Ok(self.stack[self.stacki + 1])
+        Ok(self.stack[self.stacki as usize + 1])
     }
 
-    fn compute(&mut self, instruction: &'a Instruction) -> Status {
+    // fn peek(&mut self, instruction: &'a Instruction) -> Result<i32, Error> {
+
+    // }
+
+    fn compute_two_operands(&mut self, instruction: &'a Instruction) -> Status {
+        let (second, first) = (self.pop(instruction)?, self.pop(instruction)?);
+
         let res = match instruction.code {
-            Code::Add => self.pop()? + self.pop()?,
+            Code::Add => first + second,
+            Code::Subtract => first - second,
+            Code::Multiply => first * second,
+            Code::Divide => first / second,
             _ => return Err(unimplemented(instruction.offset, instruction.width))
         };
 
-        self.push(res)?;
+        self.push(instruction, res)?;
 
         STATUS_OK
     }
@@ -50,8 +75,11 @@ impl<'a> VM {
     pub fn exec(&mut self, program: &'a Program) -> Result<String, Error> {
         for instruction in program {
             match instruction.code {
-                Code::PushNum(i) => self.push(i)?,
-                Code::Add => self.compute(instruction)?,
+                Code::PushNum(i) => self.push(instruction, i)?,
+                Code::Add |
+                Code::Subtract |
+                Code::Multiply |
+                Code::Divide => self.compute_two_operands(instruction)?,
                 _ => return Err(
                     unimplemented(instruction.offset, instruction.width)
                         .with_description(format!("Operation not supported: {:?}", instruction.code))
@@ -59,6 +87,6 @@ impl<'a> VM {
             }
         }
 
-        Ok(format!("{:?}", self.stack[self.stacki]))
+        Ok(format!("{:?}", self.stack[self.stacki as usize]))
     }
 }

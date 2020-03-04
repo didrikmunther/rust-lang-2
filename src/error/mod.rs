@@ -20,7 +20,11 @@ pub enum CompilerErrorType {
 
 #[derive(Debug)]
 pub enum VMErrorType {
-    NotImplemented
+    NotImplemented,
+    StackOverflow {
+        stack_size: usize,
+        index: i32
+    }
 }
 
 #[derive(Debug)]

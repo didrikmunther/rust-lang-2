@@ -22,7 +22,7 @@ fn run(code: &str) -> Result<String, Error> {
 
     let executed = vm.exec(&compiler.compile(&parsed)?)?;
 
-    Ok(format!("{:?}\n{:#?}\n{:#?}\n{:#?}", lexed_res, parsed_res, compiled, executed))
+    Ok(format!("{:?}\n{:#?}\n{:#?}\n{}", lexed_res, parsed_res, compiled, executed))
 }
 
 fn main() {  
