@@ -38,13 +38,13 @@ type InstructionParser = fn(&[u8]) -> Code;
 
 #[derive(Debug)]
 pub enum Code {
-    NULL,
+    Null,
     
-    ADD,
-    SUBTRACT,
-    MULTIPLY,
-    DIVIDE,
-    ASSIGN,
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Assign,
 
     PushNum(i32),
     PushFloat(f32),
@@ -52,7 +52,7 @@ pub enum Code {
     PushVar(String),
     PushFunction {
         args: Vec<String>,
-        
+        body: Vec<Instruction>
     }
 }
 

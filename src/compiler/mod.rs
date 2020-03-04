@@ -39,6 +39,11 @@ impl Builder {
     pub fn into_iter(self) -> impl Iterator<Item = Instruction> {
         self.list.into_iter()
     }
+
+    pub fn to_vec(self) -> Vec<Instruction> {
+        self.into_iter()
+            .collect::<Vec<Instruction>>()
+    }
 }
 
 pub struct Compiler { }
@@ -84,11 +89,11 @@ impl Compiler {
             },
             ExpressionType::Binary {left, right, operator, offset, width} => {
                 let code = match operator {
-                    Token::Plus => Code::ADD,
-                    Token::Minus => Code::SUBTRACT,
-                    Token::FSlash => Code::DIVIDE,
-                    Token::Asterix => Code::MULTIPLY,
-                    Token::Equals => Code::ASSIGN,
+                    Token::Plus => Code::Add,
+                    Token::Minus => Code::Subtract,
+                    Token::FSlash => Code::Divide,
+                    Token::Asterix => Code::Multiply,
+                    Token::Equals => Code::Assign,
                     _ => return Err(
                         unimplemented(*offset, *width)
                             .with_description(format!("unimplemented operator {:?}", operator))
@@ -100,23 +105,25 @@ impl Compiler {
                     .append(self.expression(&*right)?)
                     .push_back(Instruction::from_expression(&expr, code))
             },
-            // ExpressionType::Function {args, body} => {
-
-            // }
+            ExpressionType::Function {args, body} => {
+                Builder::from(Instruction::from_expression(&expr, Code::PushFunction {
+                    args: args.into_iter()
+                        .map(|v| String::from(*v))
+                        .collect::<Vec<String>>(),
+                    body: self.compile(body)?
+                }))
+            }
             _ => return Err(unimplemented_expr(&expr))
         })
     }
 
-    pub fn compile(&mut self, ast: AST) -> Result<Program, Error> {
+    pub fn compile(&mut self, ast: &AST) -> Result<Program, Error> {
         let mut program = Builder::new();
 
         for declaration in ast {
             program = program.append(self.declaration(&declaration)?);
         }
 
-        Ok(
-            program.into_iter()
-                .collect::<Vec<Instruction>>()
-        )
+        Ok(program.to_vec())
     }
 }
