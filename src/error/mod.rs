@@ -8,7 +8,8 @@ pub enum LexerErrorType {
 
 #[derive(Debug)]
 pub enum ParserErrorType {
-    ExpectedPrimary
+    ExpectedPrimary,
+    ExpectedClosedParenthesis
 }
 
 #[derive(Debug)]

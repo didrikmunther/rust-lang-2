@@ -217,8 +217,7 @@ impl<'a> Parser<'a> {
     }
 
     fn expression(&mut self) -> ExpressionResult<'a> {
-        let primary = self.assign()?;
-        Ok(primary)
+        Ok(self.assign()?)
     }
 
     fn assign(&mut self) -> ExpressionResult<'a> {
@@ -264,7 +263,7 @@ impl<'a> Parser<'a> {
 
     fn primary(&mut self) -> ExpressionResult<'a> {
         if let Some(block) = self.get(&[Token::Literal, Token::Identifier]) {
-            Ok(Expression {
+            return Ok(Expression {
                 offset: block.offset,
                 width: block.width,
                 content: &block.content,
@@ -273,26 +272,46 @@ impl<'a> Parser<'a> {
                     BlockType::Identifier(ref identifier) => ExpressionType::Primary(Primary::Identifier(identifier)),
                     _ => return Err(Error::new(0, 0, ErrorType::Unknown))
                 }
-            })
-        } else {
-            // print!("{:?}\n", self.peek());
-
-            let (offset, width) = self.peek()
-                .map(|v| (v.offset, v.width))
-                .or(Some((0, 0)))
-                .unwrap();
-            
-            Err(
-                Error::new(offset, width, ErrorType::ParserError(ParserErrorType::ExpectedPrimary))
-                    .with_description(format!(
-                        "Expected primary instead of: {}",
-                        self.peek()
-                            .map(|v| format!("{:?}", v.block_type))
-                            .or(Some(String::from("Unknown block")))
-                            .unwrap()
-                    ))
-            )
+            });
         }
+
+        return self.parenthesis();
+    }
+
+    fn parenthesis(&mut self) -> ExpressionResult<'a> {
+        if let Some(parenthesis) = self.get(&[Token::ParOpen]) {
+            let expr = self.expression()?;
+            if let None = self.get(&[Token::ParClosed]) {
+                return Err(Error::new(
+                    parenthesis.offset,
+                    parenthesis.width,
+                    ErrorType::ParserError(ParserErrorType::ExpectedClosedParenthesis)
+                ));
+            }
+            return Ok(expr);
+        }
+
+        return self.error();
+    }
+
+    fn error(&mut self) -> ExpressionResult<'a> {
+        // print!("{:?}\n", self.peek());
+
+        let (offset, width) = self.peek()
+            .map(|v| (v.offset, v.width))
+            .or(Some((0, 0)))
+            .unwrap();
+        
+        return Err(
+            Error::new(offset, width, ErrorType::ParserError(ParserErrorType::ExpectedPrimary))
+                .with_description(format!(
+                    "Expected primary instead of: {}",
+                    self.peek()
+                        .map(|v| format!("{:?}", v.block_type))
+                        .or(Some(String::from("Unknown block")))
+                        .unwrap()
+                ))
+        );
     }
 
     pub fn parse(&mut self, lexed: &'a LinkedList<Block>) -> Result<Program<'a>, Error> {
