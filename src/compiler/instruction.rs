@@ -47,7 +47,7 @@ pub enum Code {
     Assign,
 
     PushNum(i32),
-    PushFloat(f32),
+    PushFloat(f64),
     PushString(String),
     PushVar(String),
     PushFunction {

@@ -43,7 +43,7 @@ impl Pool {
 #[derive(Debug)]
 enum Value {
     Int(i32),
-    Float(f32)
+    Float(f64)
 }
 
 pub struct VM {
@@ -112,6 +112,46 @@ impl<'a> VM {
                 };
 
                 let val = self.pool.create(Value::Int(res));
+                self.push(instruction, val)?;
+            },
+            (&Value::Float(first), &Value::Float(second)) => {
+                let res = match instruction.code {
+                    Code::Add => first + second,
+                    Code::Subtract => first - second,
+                    Code::Multiply => first * second,
+                    Code::Divide => first / second,
+                    _ => return Err(operation_not_supported(instruction, &*stack_first, &*stack_second))
+                };
+
+                let val = self.pool.create(Value::Float(res));
+                self.push(instruction, val)?;
+            },
+            (&Value::Int(first), &Value::Float(second)) => {
+                let first = f64::from(first);
+
+                let res = match instruction.code {
+                    Code::Add => first + second,
+                    Code::Subtract => first - second,
+                    Code::Multiply => first * second,
+                    Code::Divide => first / second,
+                    _ => return Err(operation_not_supported(instruction, &*stack_first, &*stack_second))
+                };
+
+                let val = self.pool.create(Value::Float(res));
+                self.push(instruction, val)?;
+            },
+            (&Value::Float(first), &Value::Int(second)) => {
+                let second = f64::from(second);
+
+                let res = match instruction.code {
+                    Code::Add => first + second,
+                    Code::Subtract => first - second,
+                    Code::Multiply => first * second,
+                    Code::Divide => first / second,
+                    _ => return Err(operation_not_supported(instruction, &*stack_first, &*stack_second))
+                };
+
+                let val = self.pool.create(Value::Float(res));
                 self.push(instruction, val)?;
             },
             _ => return Err(operation_not_supported(instruction, &*stack_first, &*stack_second))

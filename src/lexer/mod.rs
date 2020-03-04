@@ -26,7 +26,7 @@ pub enum BlockType {
 pub enum Literal {
     String(String),
     Int(i32),
-    Float(f32),
+    Float(f64),
 }
 
 #[derive(Debug)]
@@ -136,7 +136,7 @@ impl Lexer {
                     String::from(slice),
                     offset
                 ));
-            } else if let Ok(f) = slice.parse::<f32>() {
+            } else if let Ok(f) = slice.parse::<f64>() {
                 return Some(Block::new(
                     BlockType::Literal(Literal::Float(f)),
                     Token::Literal,
