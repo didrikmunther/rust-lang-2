@@ -19,10 +19,16 @@ pub enum CompilerErrorType {
 }
 
 #[derive(Debug)]
+pub enum VMErrorType {
+    NotImplemented
+}
+
+#[derive(Debug)]
 pub enum ErrorType {
     LexerError(LexerErrorType),
     ParserError(ParserErrorType),
     CompilerError(CompilerErrorType),
+    VMError(VMErrorType),
     Unknown
 }
 

@@ -5,9 +5,9 @@ use super::parser::*;
 use super::lexer::*;
 
 mod instruction;
-use instruction::{Instruction, Code};
+pub use instruction::{Instruction, Code};
 
-type Program = Vec<Instruction>;
+pub type Program = Vec<Instruction>;
 type ProgramResult = Result<Builder, Error>;
 
 struct Builder {
@@ -48,10 +48,12 @@ impl Builder {
 
 pub struct Compiler { }
 
+#[allow(dead_code)]
 fn unimplemented(offset: usize, width: usize) -> Error {
     Error::new(offset, width, ErrorType::CompilerError(CompilerErrorType::NotImplemented))
 }
 
+#[allow(dead_code)]
 fn unimplemented_expr(expr: &Expression) -> Error {
     unimplemented(expr.offset, expr.width)
 }
@@ -103,7 +105,7 @@ impl Compiler {
                 Builder::new()
                     .append(self.expression(&*left)?)
                     .append(self.expression(&*right)?)
-                    .push_back(Instruction::from_expression(&expr, code))
+                    .push_back(Instruction::new(*offset, *width, code))
             },
             ExpressionType::Function {args, body} => {
                 Builder::from(Instruction::from_expression(&expr, Code::PushFunction {
@@ -113,7 +115,7 @@ impl Compiler {
                     body: self.compile(body)?
                 }))
             }
-            _ => return Err(unimplemented_expr(&expr))
+            // _ => return Err(unimplemented_expr(&expr))
         })
     }
 

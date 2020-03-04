@@ -10,6 +10,7 @@ fn run(code: &str) -> Result<String, Error> {
     let lexer = lexer::Lexer::new();
     let mut parser = parser::Parser::new();
     let mut compiler = compiler::Compiler::new();
+    let mut vm = vm::VM::new();
 
     let lexed = lexer.lex(String::from(code))?;
     let lexed_res = lexer.lex(String::from(code))?.into_iter().map(|v| v.block_type).collect::<Vec<BlockType>>();
@@ -19,7 +20,9 @@ fn run(code: &str) -> Result<String, Error> {
 
     let compiled = compiler.compile(&parsed)?;
 
-    Ok(format!("{:?}\n{:#?}\n{:#?}", lexed_res, parsed_res, compiled))
+    let executed = vm.exec(&compiler.compile(&parsed)?)?;
+
+    Ok(format!("{:?}\n{:#?}\n{:#?}\n{:#?}", lexed_res, parsed_res, compiled, executed))
 }
 
 fn main() {  

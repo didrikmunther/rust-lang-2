@@ -1,12 +1,12 @@
-use std::collections::HashMap;
+// use std::collections::HashMap;
 
 use super::super::parser::Expression;
 
 #[derive(Debug)]
 pub struct Instruction {
-    offset: usize,
-    width: usize,
-    code: Code
+    pub offset: usize,
+    pub width: usize,
+    pub code: Code
 }
 
 impl Instruction {
@@ -34,7 +34,7 @@ impl Instruction {
     // }
 }
 
-type InstructionParser = fn(&[u8]) -> Code;
+// type InstructionParser = fn(&[u8]) -> Code;
 
 #[derive(Debug)]
 pub enum Code {
@@ -56,6 +56,7 @@ pub enum Code {
     }
 }
 
+#[allow(dead_code, non_camel_case_types)]
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum OPCode {
     NULL = 0x00,
@@ -73,14 +74,14 @@ pub enum OPCode {
     PUSH_FUNCTION
 }
 
-use OPCode::*;
+// use OPCode::*;
 
-lazy_static! {
-    pub static ref h: HashMap<OPCode, InstructionParser> = hashmap!{
-        PUSH_NUM => push_num as InstructionParser
-    };
-}
+// lazy_static! {
+//     pub static ref h: HashMap<OPCode, InstructionParser> = hashmap!{
+//         PUSH_NUM => push_num as InstructionParser
+//     };
+// }
 
-fn push_num(i: &[u8]) -> Code {
-    Code::PushNum(5)
-}
+// fn push_num(i: &[u8]) -> Code {
+//     Code::PushNum(5)
+// }
