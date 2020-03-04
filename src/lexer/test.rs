@@ -11,7 +11,7 @@ fn unexpected_end_of_string() {
             String::from("Hello, \"there \"        \" ").chars().collect(),
             0
         )),
-        Err(Error { error_type: ErrorType::LexerError(LexerErrorType::UnexpectedEndOfString), pos: 23, width: 1, .. })
+        Err(Error { error_type: ErrorType::LexerError(LexerErrorType::UnexpectedEndOfString), offset: 23, width: 1, .. })
     );
 }
 

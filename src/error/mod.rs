@@ -8,8 +8,9 @@ pub enum LexerErrorType {
 
 #[derive(Debug)]
 pub enum ParserErrorType {
-    ExpectedPrimary,
-    ExpectedClosedParenthesis
+    UnexpectedToken,
+    UnclosedParenthesis,
+    UnclosedBracket
 }
 
 #[derive(Debug)]
@@ -25,19 +26,19 @@ pub struct Error {
     file: Option<String>,
     help: Option<String>,
     description: Option<String>,
-    pub pos: usize,
+    pub offset: usize,
     pub width: usize,
     pub error_type: ErrorType
 }
 
 impl Error {
-    pub fn new(pos: usize, width: usize, error_type: ErrorType) -> Self {
+    pub fn new(offset: usize, width: usize, error_type: ErrorType) -> Self {
         Self {
             code: None,
             file: None,
             help: None,
             description: None,
-            pos,
+            offset,
             width,
             error_type
         }
@@ -112,7 +113,7 @@ impl fmt::Display for Error {
 
         let empty: String = String::from("");
         let code = self.code.as_ref().unwrap();
-        let (line_pos, line, indents, line_indents) = get_line_pos(code, self.pos);
+        let (line_pos, line, indents, line_indents) = get_line_pos(code, self.offset);
 
         write!(
             f,

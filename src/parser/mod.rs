@@ -84,10 +84,6 @@ impl<'a> Parser<'a> {
         self.index = index;
     }
 
-    // fn current(&self) -> Option<&'a Block> {
-    //     self.get_at(self.index)
-    // }
-
     fn is_end(&self) -> bool {
         self.check(Token::EOF).is_some()
     }
@@ -156,16 +152,26 @@ impl<'a> Parser<'a> {
         }
 
         let end: usize;
-        let body = if let Some(_) = self.get(&[Token::BracketOpen]) {
-            let program = self.program()?;
+        let body = if let Some(open_bracket) = self.get(&[Token::BracketOpen]) {
+            let mut declarations = vec![];
 
-            if let Some(bracket) = self.get(&[Token::BracketClosed]) {
-                end = bracket.offset + bracket.width;
-            } else {
-                return Ok(None);
+            loop {
+                if self.is_end() {
+                    // return Ok(None);
+                    return Err(Error::new(
+                        open_bracket.offset,
+                        open_bracket.width,
+                        ErrorType::ParserError(ParserErrorType::UnclosedBracket)
+                    ))
+                } else if let Some(close_bracket) = self.get(&[Token::BracketClosed]) {
+                    end = close_bracket.offset + close_bracket.width;
+                    break;
+                }
+
+                declarations.push(self.declaration()?);
             }
 
-            program
+            declarations
         } else {
             let declaration = self.declaration()?;
             end = declaration.offset + declaration.width;
@@ -285,7 +291,7 @@ impl<'a> Parser<'a> {
                 return Err(Error::new(
                     parenthesis.offset,
                     parenthesis.width,
-                    ErrorType::ParserError(ParserErrorType::ExpectedClosedParenthesis)
+                    ErrorType::ParserError(ParserErrorType::UnclosedParenthesis)
                 ));
             }
             return Ok(expr);
@@ -303,9 +309,9 @@ impl<'a> Parser<'a> {
             .unwrap();
         
         return Err(
-            Error::new(offset, width, ErrorType::ParserError(ParserErrorType::ExpectedPrimary))
+            Error::new(offset, width, ErrorType::ParserError(ParserErrorType::UnexpectedToken))
                 .with_description(format!(
-                    "Expected primary instead of: {}",
+                    "Did not expect token [{}]",
                     self.peek()
                         .map(|v| format!("{:?}", v.block_type))
                         .or(Some(String::from("Unknown block")))

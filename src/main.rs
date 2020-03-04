@@ -16,7 +16,6 @@ fn run(code: &str) -> Result<String, Error> {
     let parsed = parser.parse(&lexed)?;
     let parsed_res = parsed.into_iter().map(|v| v.declaration_type).collect::<Vec<DeclarationType>>();
 
-    // Ok(String::from("Ok"))
     Ok(format!("{:?}\n{:#?}", lexed_res, parsed_res))
 }
 
