@@ -176,13 +176,6 @@ impl Lexer {
             }
         }
 
-        result.push_front(Block::new(
-            BlockType::Token(Token::SOF),
-            Token::SOF,
-            String::from(" "),
-            0
-        ));
-
         result.push_back(Block::new(
             BlockType::Token(Token::EOF),
             Token::EOF,
@@ -358,13 +351,14 @@ impl Lexer {
     pub fn lex(&self, query: String) -> LexerResult {
         let w_strings = self.strip_strings(Block::new(BlockType::Rest, Token::Rest, query.chars().collect(), 0))?;
         let w_comments = self.replace_rest(w_strings, &Self::strip_comments)?;
-        let w_tokens = self.replace_rest(w_comments, &Self::tokenize)?;
+        let mut w_tokens = self.replace_rest(w_comments, &Self::tokenize)?;
 
-        // let w_eof = w_tokens.push_back(Block::new(
-        //     BlockType::Token(Token::EOF),
-        //     String::from(""),
-        //     w_tokens. 
-        // ));
+        w_tokens.push_front(Block::new(
+            BlockType::Token(Token::SOF),
+            Token::SOF,
+            String::from(" "),
+            0
+        ));
     
         Ok(w_tokens)
     }

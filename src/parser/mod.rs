@@ -3,8 +3,7 @@ use std::collections::LinkedList;
 use super::error::*;
 use super::lexer::*;
 
-type Program<'a> = Vec<Declaration<'a>>;
-// type Program<'a> = Result<Program, Error>;
+pub type AST<'a> = Vec<Declaration<'a>>;
 type ExpressionResult<'a> = Result<Expression<'a>, Error>;
 
 #[derive(Debug)]
@@ -26,7 +25,7 @@ pub struct Statement<'a> {
     width: usize,
     content: &'a str,
     end: bool, // ended with a semicolon
-    statement_type: StatementType<'a>
+    pub statement_type: StatementType<'a>
 }
 
 #[derive(Debug)]
@@ -36,10 +35,10 @@ pub enum StatementType<'a> {
 
 #[derive(Debug)]
 pub struct Expression<'a> {
-    offset: usize,
-    width: usize,
-    content: &'a str,
-    expression_type: ExpressionType<'a>
+    pub offset: usize,
+    pub width: usize,
+    pub content: &'a str,
+    pub expression_type: ExpressionType<'a>
 }
 
 #[derive(Debug)]
@@ -48,7 +47,7 @@ pub enum ExpressionType<'a> {
     Binary(Box<Expression<'a>>, Token, Box<Expression<'a>>),
     Function {
         args: Vec<&'a str>,
-        body: Program<'a>
+        body: AST<'a>
     }
 }
 
@@ -189,14 +188,14 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn program(&mut self) -> Result<Program<'a>, Error> {
-        let mut program = vec![];
+    fn ast(&mut self) -> Result<AST<'a>, Error> {
+        let mut ast = vec![];
 
         while !self.is_end() {
-            program.push(self.declaration()?);
+            ast.push(self.declaration()?);
         }
 
-        return Ok(program);
+        return Ok(ast);
     }
 
     fn declaration(&mut self) -> Result<Declaration<'a>, Error> {
@@ -320,13 +319,11 @@ impl<'a> Parser<'a> {
         );
     }
 
-    pub fn parse(&mut self, lexed: &'a LinkedList<Block>) -> Result<Program<'a>, Error> {
+    pub fn parse(&mut self, lexed: &'a LinkedList<Block>) -> Result<AST<'a>, Error> {
         self.index = 0;
         self.lexed = lexed.into_iter()
             .collect::<Vec<&'a Block>>();
 
-        let program: Program<'a> = self.program()?;
-
-        return Ok(program);
+        return Ok(self.ast()?);
     }
 }

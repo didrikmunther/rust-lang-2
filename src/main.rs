@@ -9,14 +9,17 @@ use error::Error;
 fn run(code: &str) -> Result<String, Error> {
     let lexer = lexer::Lexer::new();
     let mut parser = parser::Parser::new();
+    let mut compiler = compiler::Compiler::new();
 
     let lexed = lexer.lex(String::from(code))?;
     let lexed_res = lexer.lex(String::from(code))?.into_iter().map(|v| v.block_type).collect::<Vec<BlockType>>();
 
     let parsed = parser.parse(&lexed)?;
-    let parsed_res = parsed.into_iter().map(|v| v.declaration_type).collect::<Vec<DeclarationType>>();
+    let parsed_res = parser.parse(&lexed)?.into_iter().map(|v| v.declaration_type).collect::<Vec<DeclarationType>>();
 
-    Ok(format!("{:?}\n{:#?}", lexed_res, parsed_res))
+    let compiled = compiler.compile(parsed);
+
+    Ok(format!("{:?}\n{:#?}\n{:#?}", lexed_res, parsed_res, compiled))
 }
 
 fn main() {  
