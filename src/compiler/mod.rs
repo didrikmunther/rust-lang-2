@@ -121,8 +121,21 @@ impl Compiler {
                         .collect::<Vec<String>>(),
                     body: self.compile(body)?
                 }))
+            },
+            ExpressionType::FunctionCall { func, args } => {
+                Builder::from(Instruction::from_expression(&expr, Code::CallFunction {
+                    func: self.expression(&*func)?.to_vec(),
+                    args: {
+                        let mut instructions = Builder::new();
+                        for arg in args {
+                            instructions = instructions.append(self.expression(&*arg)?);
+                        }
+                        instructions.to_vec()
+                    }
+                }))
             }
-            _ => return Err(unimplemented_expr(&expr))
+            ExpressionType::Empty => Builder::new(),
+            // _ => return Err(unimplemented_expr(&expr))
         })
     }
 

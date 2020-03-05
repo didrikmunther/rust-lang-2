@@ -56,6 +56,11 @@ pub enum Code {
     PushFunction {
         pars: Vec<String>,
         body: Vec<Instruction>
+    },
+
+    CallFunction {
+        func: Vec<Instruction>,
+        args: Vec<Instruction>,
     }
 }
 
