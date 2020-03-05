@@ -52,9 +52,12 @@ pub enum ExpressionType<'a> {
         width: usize // operator width
     },
     Function {
-        args: Vec<&'a str>,
+        pars: Vec<&'a str>,
         body: AST<'a>
-    }
+    },
+    // FunctionCall {
+    //     pars: Vec
+    // }
 }
 
 #[derive(Debug)]
@@ -138,12 +141,12 @@ impl<'a> Parser<'a> {
 
     fn match_lambda(&mut self) -> Result<Option<Expression<'a>>, Error> {
         let start;
-        let mut args: Vec<&'a str> = vec![];
+        let mut pars: Vec<&'a str> = vec![];
 
         if let Some(parenthesis) = self.get(&[Token::ParOpen]) {
             start = parenthesis.offset;
             while let Some(arg) = self.get(&[Token::Identifier]) {
-                args.push(&arg.content);
+                pars.push(&arg.content);
                 if let None = self.get(&[Token::Comma]) {
                     break;
                 }
@@ -153,7 +156,7 @@ impl<'a> Parser<'a> {
             }
         } else if let Some(arg) = self.get(&[Token::Identifier]) {
             start = arg.offset;
-            args.push(&arg.content);
+            pars.push(&arg.content);
         } else {
             return Ok(None);
         }
@@ -194,7 +197,7 @@ impl<'a> Parser<'a> {
             width: end - start,
             content: "",
             expression_type: ExpressionType::Function {
-                args,
+                pars,
                 body
             }
         }))

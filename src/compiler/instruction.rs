@@ -54,7 +54,7 @@ pub enum Code {
     PushString(String),
     PushVar(String),
     PushFunction {
-        args: Vec<String>,
+        pars: Vec<String>,
         body: Vec<Instruction>
     }
 }

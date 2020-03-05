@@ -114,9 +114,9 @@ impl Compiler {
                     .append(self.expression(&*right)?)
                     .push_back(Instruction::new(*offset, *width, code))
             },
-            ExpressionType::Function {args, body} => {
+            ExpressionType::Function {pars, body} => {
                 Builder::from(Instruction::from_expression(&expr, Code::PushFunction {
-                    args: args.into_iter()
+                    pars: pars.into_iter()
                         .map(|v| String::from(*v))
                         .collect::<Vec<String>>(),
                     body: self.compile(body)?
