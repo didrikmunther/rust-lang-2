@@ -44,6 +44,10 @@ impl Builder {
         self.into_iter()
             .collect::<Vec<Instruction>>()
     }
+
+    pub fn len(&self) -> usize {
+        self.list.len()
+    }
 }
 
 pub struct Compiler { }
@@ -115,12 +119,17 @@ impl Compiler {
                     .push_back(Instruction::new(*offset, *width, code))
             },
             ExpressionType::Function {pars, body} => {
+                let body = self.get_compiled(body)?;
+
                 Builder::from(Instruction::from_expression(&expr, Code::PushFunction {
                     pars: pars.into_iter()
                         .map(|v| String::from(*v))
                         .collect::<Vec<String>>(),
-                    body: self.compile(body)?
+                    body_len: body.len() + 1 // 1 is the Code::Return
                 }))
+                .append(body)
+                .push_back(Instruction::from_expression(&expr, Code::Return))
+
             },
             ExpressionType::FunctionCall { func, args } => {
                 Builder::from(Instruction::from_expression(&expr, Code::CallFunction {
@@ -142,13 +151,17 @@ impl Compiler {
         })
     }
 
-    pub fn compile(&mut self, ast: &AST) -> Result<Program, Error> {
+    fn get_compiled(&mut self, ast: &AST) -> ProgramResult {
         let mut program = Builder::new();
 
         for declaration in ast {
             program = program.append(self.declaration(&declaration)?);
         }
 
-        Ok(program.to_vec())
+        Ok(program)
+    }
+
+    pub fn compile(&mut self, ast: &AST) -> Result<Program, Error> {
+        Ok(self.get_compiled(ast)?.to_vec())
     }
 }

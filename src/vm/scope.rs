@@ -31,4 +31,12 @@ impl Scope {
             stack,
         }
     }
+
+    pub fn get_variable(&self, identifier: &str) -> Option<Rc<Value>> {
+        self.variables.get(identifier)
+            .map(|v| Rc::clone(v))
+            .or_else(|| self.parent.as_ref()
+                .and_then(|parent| parent.borrow()
+                    .get_variable(identifier)))
+    }
 }

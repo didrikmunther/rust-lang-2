@@ -55,13 +55,15 @@ pub enum Code {
     PushVar(String),
     PushFunction {
         pars: Vec<String>,
-        body: Vec<Instruction>
+        body_len: usize,
+        // body: Vec<Instruction>
     },
 
     CallFunction {
         func: Vec<Instruction>,
         args: Vec<Instruction>,
-    }
+    },
+    Return // Return from a function
 }
 
 #[allow(dead_code, non_camel_case_types)]

@@ -44,6 +44,7 @@ pub enum Value {
     },
 
     Function {
+        // instance: Rc<VMInstance>,
         position: usize
     }
 }
@@ -83,6 +84,12 @@ pub struct VMInstance {
     scope: Rc<RefCell<Scope>>
 }
 
+impl std::fmt::Debug for VMInstance {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "VMInstance at {:p}", self)
+    }
+}
+
 impl<'a, 'r> VMInstance {
     pub fn new(parent_scope: Rc<RefCell<Scope>>) -> Self {
         Self {
@@ -109,8 +116,8 @@ impl<'a, 'r> VMInstance {
     fn get_variable(&self, val: &Rc<Value>) -> Result<Rc<Value>, Error> {
         Ok(match &**val {
             Value::Variable { identifier, offset: _, width: _ } => {
-                self.scope.borrow_mut().variables.get(identifier)
-                    .or(Some(&Rc::from(NULL)))
+                self.scope.borrow_mut().get_variable(identifier)
+                    .or(Some(Rc::from(NULL)))
                     .map(|v| Rc::clone(&v))
                     .unwrap()
             },
@@ -200,7 +207,7 @@ impl<'a, 'r> VMInstance {
         STATUS_OK
     }
 
-    pub fn do_exec(&mut self, program: &'a Program, from: usize, offset: usize) -> Result<(), Error> {
+    pub fn do_exec(&mut self, program: &'a Program, from: usize) -> Result<(), Error> {
         let mut index = from;
 
         loop {
@@ -238,15 +245,16 @@ impl<'a, 'r> VMInstance {
                     self.push(instruction, val)?;
                 },
 
-                Code::PushFunction { pars, body } => {
+                Code::PushFunction { pars, body_len } => {
                     let val = self.create(Value::Function {
-                        position: offset + index
+                        position: index
                     });
                     self.push(instruction, val)?;
+                    index += body_len; // Jump past the function body
                 },
 
                 Code::CallFunction { func, args } => {
-                    self.do_exec(func, 0, offset)?;
+                    self.do_exec(func, 0)?;
 
                     let var = &self.pop(&instruction)?;
 
@@ -254,11 +262,11 @@ impl<'a, 'r> VMInstance {
                     // println!("{:?}", &*self.get_variable(var)?);
                     // println!("{:#?}", program);
 
-                    let func = match &*self.get_variable(var)? {
+                    match &*self.get_variable(var)? {
                         Value::Function { position } => match &program[*position].code {
-                            Code::PushFunction { pars, body } => {
+                            Code::PushFunction { pars, .. } => {
                                 let mut instance = self.instance();
-                                instance.do_exec(body, 0, 0)?;
+                                instance.do_exec(program, *position + 1)?;
                                 if let Some(val) = instance.pop(instruction).ok() {
                                     self.push(instruction, val)?;
                                 }
@@ -268,14 +276,18 @@ impl<'a, 'r> VMInstance {
                                 return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidCast)))
                             }
                         },
-                        _ => return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidCast)))
-                    };
+                        _ => {
+                            println!("{:?}: {:?}", var, &*self.get_variable(var)?);
+                            return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidCast)))
+                        }
+                    }
 
                     // self.do_exec(args, 0, offset)?;
                     // let args = self.pop(&EMPTY_INSTRUCTION)?;
                 }
 
                 Code::Pop => { self.pop(instruction)?; },
+                Code::Return => { break; },
 
                 _ => return Err(
                     unimplemented(instruction.offset, instruction.width)
@@ -290,7 +302,7 @@ impl<'a, 'r> VMInstance {
     }
 
     pub fn exec(&mut self, program: &'a Program, from: usize) -> Result<String, Error> {
-        self.do_exec(program, from, 0)?;
+        self.do_exec(program, from)?;
 
         // println!("variables: {:?}", self.scope.variables);
 
