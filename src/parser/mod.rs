@@ -55,9 +55,10 @@ pub enum ExpressionType<'a> {
         pars: Vec<&'a str>,
         body: AST<'a>
     },
-    // FunctionCall {
-    //     pars: Vec
-    // }
+    FunctionCall {
+        func: Box<Expression<'a>>,
+        args: Vec<Box<Expression<'a>>>
+    }
 }
 
 #[derive(Debug)]
@@ -272,10 +273,40 @@ impl<'a> Parser<'a> {
     }
 
     fn multiplication(&mut self) -> ExpressionResult<'a> {
-        let mut expr = self.primary()?;
+        let mut expr = self.function_call()?;
 
         while let Some(block) = self.get(&[Token::Asterix, Token::FSlash]) {
-            expr = Parser::binary(expr, self.primary()?, block);
+            expr = Parser::binary(expr, self.function_call()?, block);
+        }
+
+        Ok(expr)
+    }
+
+    fn function_call(&mut self) -> ExpressionResult<'a> {
+        let mut expr = self.primary()?;
+
+        while let Some(open) = self.get(&[Token::ParOpen]) {
+            let mut args = Vec::new();
+            
+            while let None = self.get(&[Token::ParClosed]) {
+                if self.is_end() {
+                    return Err(Error::new(open.offset, open.width, ErrorType::ParserError(ParserErrorType::UnclosedParenthesis)));
+                }
+
+                args.push(Box::new(self.expression()?));
+            }
+
+            // let closed = self.get(&[Token::ParClosed]).unwrap();
+
+            expr = Expression {
+                offset: expr.offset,
+                width: 0,//closed.offset + 1,
+                content: expr.content,
+                expression_type: ExpressionType::FunctionCall {
+                    func: Box::new(expr),
+                    args,
+                }
+            }
         }
 
         Ok(expr)

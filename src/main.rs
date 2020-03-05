@@ -6,22 +6,38 @@ use lexer::BlockType;
 use parser::DeclarationType;
 use error::Error;
 
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+enum Mode {
+    Run = 0,
+    Compiled = 1,
+    Parsed = 2,
+    Lexed = 3
+}
+
+fn flush() {
+    std::io::stdout().flush().expect("Flush failed.");
+}
+
 struct Lang {
     vm: vm::VM,
-    is_debug: bool
+    mode: Mode
 }
 
 impl<'a> Lang {
     pub fn new() -> Self {
         Lang {
             vm: vm::VM::new(),
-            is_debug: false
+            mode: Mode::Run
         }
     }
 
-    pub fn debug(&mut self, debug: bool) -> &mut Self {
-        self.is_debug = debug;
-        self
+    pub fn set_mode(&mut self, mode: Mode) {
+        if mode != self.mode {
+            println!("Mode switched to [{:?}]", mode);
+            flush();
+        }
+
+        self.mode = mode;
     }
 
     pub fn run(&mut self, code: &str) -> Result<String, Error> {
@@ -31,39 +47,52 @@ impl<'a> Lang {
 
         let code = String::from(code);
 
-        let lexed = lexer.lex(code.clone())?;
-        let parsed = parser.parse(&lexed)?;
-        let compiled = compiler.compile(&parsed)?;
-        let executed = self.vm.exec(&compiled)?;
-    
-        if self.is_debug {
-            let lexed_res = lexer.lex(String::from(code.clone()))?.into_iter().map(|v| v.block_type).collect::<Vec<BlockType>>();
-            let parsed_res = parser.parse(&lexed)?.into_iter().map(|v| v.declaration_type).collect::<Vec<DeclarationType>>();
-            Ok(format!("{:#?}\n{:#?}\n{:#?}\n{}", lexed_res, parsed_res, compiled, executed))
-        } else {
-            Ok(format!("{}", executed))
+        match self.mode {
+            Mode::Run => {
+                let lexed = lexer.lex(code.clone())?;
+                let parsed = parser.parse(&lexed)?;
+                let compiled = compiler.compile(&parsed)?;
+                let executed = self.vm.exec(&compiled)?;
+                Ok(format!("{}", executed))
+            },
+            Mode::Lexed => {
+                let lexed_res = lexer.lex(String::from(code.clone()))
+                    .map(|v| v.into_iter().map(|v| v.block_type).collect::<Vec<BlockType>>());
+                Ok(format!("{:#?}", lexed_res))
+            },
+            Mode::Parsed => {
+                let lexed = lexer.lex(code.clone())?;
+                let parsed = parser.parse(&lexed)?;
+                let parsed_res = parsed.into_iter().map(|v| v.declaration_type).collect::<Vec<DeclarationType>>();
+                Ok(format!("{:#?}", parsed_res))
+            },
+            Mode::Compiled => {
+                let lexed = lexer.lex(code.clone())?;
+                let parsed = parser.parse(&lexed)?;
+                let compiled = compiler.compile(&parsed)?;
+                Ok(format!("{:#?}", compiled))
+            }
         }
     }
 }
 
 fn main() {
     let mut lang = Lang::new();
-    let mut debug = false;
 
     loop {
         print!("> ");
-        std::io::stdout().flush().expect("Flush failed.");
+        flush();
 
         let mut buf = String::new();
         std::io::stdin().read_line(&mut buf).expect("Could not read user input.");
 
         match buf.as_ref() {
             "quit\n" => break,
-            "debug\n" => {
-                debug = !debug;
-                println!("Debug is [{}]", debug);
-            },
-            _ => match lang.debug(debug).run(buf.as_ref()) {
+            "$run\n" => lang.set_mode(Mode::Run),
+            "$compiled\n" => lang.set_mode(Mode::Compiled),
+            "$parsed\n" => lang.set_mode(Mode::Parsed),
+            "$lexed\n" => lang.set_mode(Mode::Lexed),
+            _ => match lang.run(buf.as_ref()) {
                 Ok(res) => println!("{}", res),
                 Err(err) => println!("{}", err
                     .with_code(String::from(buf))

@@ -122,7 +122,7 @@ impl Compiler {
                     body: self.compile(body)?
                 }))
             }
-            // _ => return Err(unimplemented_expr(&expr))
+            _ => return Err(unimplemented_expr(&expr))
         })
     }
 
