@@ -5,6 +5,7 @@ use ::std::io::{Write};
 use lexer::BlockType;
 use parser::DeclarationType;
 use error::Error;
+use compiler::Program;
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 enum Mode {
@@ -20,6 +21,7 @@ fn flush() {
 
 struct Lang {
     vm: vm::VM,
+    compiled: Program,
     mode: Mode
 }
 
@@ -27,6 +29,7 @@ impl<'a> Lang {
     pub fn new() -> Self {
         Lang {
             vm: vm::VM::new(),
+            compiled: Vec::new(),
             mode: Mode::Run
         }
     }
@@ -49,10 +52,15 @@ impl<'a> Lang {
 
         match self.mode {
             Mode::Run => {
+                let offset = self.compiled.len();
+
                 let lexed = lexer.lex(code.clone())?;
                 let parsed = parser.parse(&lexed)?;
-                let compiled = compiler.compile(&parsed)?;
-                let executed = self.vm.exec(&compiled)?;
+                let mut compiled = compiler.compile(&parsed)?;
+
+                self.compiled.append(&mut compiled);
+
+                let executed = self.vm.exec(&self.compiled, offset)?;
                 Ok(format!("{}", executed))
             },
             Mode::Lexed => {

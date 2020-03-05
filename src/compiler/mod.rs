@@ -130,7 +130,10 @@ impl Compiler {
                         for arg in args {
                             instructions = instructions.append(self.expression(&*arg)?);
                         }
-                        instructions.to_vec()
+                        
+                        // Push back amount of arguments
+                        instructions.push_back(Instruction::new(0, 0, Code::PushNum(args.len() as i32)))
+                            .to_vec()
                     }
                 }))
             }

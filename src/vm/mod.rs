@@ -41,6 +41,10 @@ pub enum Value {
         identifier: String,
         offset: usize,
         width: usize
+    },
+
+    Function {
+        position: usize
     }
 }
 
@@ -61,7 +65,7 @@ impl<'a> VM {
         }
     }
 
-    pub fn exec(&mut self, program: &'a Program) -> Result<String, Error> {
+    pub fn exec(&mut self, program: &'a Program, offset: usize) -> Result<String, Error> {
         if let None = self.root_instance {
             self.root_scope = Some(Rc::from(RefCell::from(Scope::initial(
                 Rc::clone(&self.root_pool),
@@ -71,12 +75,12 @@ impl<'a> VM {
         }
 
         let root_instance = self.root_instance.as_mut().unwrap();
-        root_instance.exec(program)
+        root_instance.exec(program, offset)
     }
 }
 
 pub struct VMInstance {
-    scope: Scope,
+    scope: Scope
 }
 
 impl<'a, 'r> VMInstance {
@@ -196,15 +200,23 @@ impl<'a, 'r> VMInstance {
         STATUS_OK
     }
 
-    pub fn exec(&mut self, program: &'a Program) -> Result<String, Error> {
-        for instruction in program {
-            match instruction.code {
+    pub fn do_exec(&mut self, program: &'a Program, from: usize, offset: usize) -> Result<(), Error> {
+        let mut index = from;
+
+        loop {
+            if index >= program.len() {
+                break;
+            }
+
+            let instruction = &program[index];
+
+            match &instruction.code {
                 Code::PushNum(i) => {
-                    let val = self.create(Value::Int(i));
+                    let val = self.create(Value::Int(*i));
                     self.push(instruction, val)?;
                 },
                 Code::PushFloat(f) => {
-                    let val = self.create(Value::Float(f));
+                    let val = self.create(Value::Float(*f));
                     self.push(instruction, val)?;
                 },
                 Code::PushString(ref s) => {
@@ -226,6 +238,39 @@ impl<'a, 'r> VMInstance {
                     self.push(instruction, val)?;
                 },
 
+                Code::PushFunction { pars, body } => {
+                    let val = self.create(Value::Function {
+                        position: offset + index
+                    });
+                    self.push(instruction, val)?;
+                },
+
+                Code::CallFunction { func, args } => {
+                    self.do_exec(func, 0, offset)?;
+
+                    let var = &self.pop(&instruction)?;
+
+                    // println!("{:?}", var);
+                    // println!("{:?}", &*self.get_variable(var)?);
+                    // println!("{:#?}", program);
+
+                    let func = match &*self.get_variable(var)? {
+                        Value::Function { position } => match &program[*position].code {
+                            Code::PushFunction { pars, body } => {
+                                self.do_exec(body, 0, offset)?;
+                            },
+                            _ => {
+                                println!("{:?}", program[*position].code);
+                                return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidCast)))
+                            }
+                        },
+                        _ => return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidCast)))
+                    };
+
+                    // self.do_exec(args, 0, offset)?;
+                    // let args = self.pop(&EMPTY_INSTRUCTION)?;
+                }
+
                 Code::Pop => { self.pop(instruction)?; },
 
                 _ => return Err(
@@ -233,15 +278,21 @@ impl<'a, 'r> VMInstance {
                         .with_description(format!("Operation not supported: [{:?}]", instruction.code))
                 )
             }
+
+            index += 1;
         }
+
+        Ok(())
+    }
+
+    pub fn exec(&mut self, program: &'a Program, from: usize) -> Result<String, Error> {
+        self.do_exec(program, from, 0)?;
 
         // println!("variables: {:?}", self.scope.variables);
 
-        let end_instruction = Instruction::new(0, 0, Code::Null);
-
         Ok(format!(
             "{:?}",
-            self.pop(&end_instruction)
+            self.pop(&Instruction::new(0, 0, Code::Null))
                 .as_ref()
                 .map(|v| self.get_variable(&v))
                 .unwrap_or(Ok(Rc::from(NULL)))?

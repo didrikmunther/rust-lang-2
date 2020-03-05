@@ -23,6 +23,7 @@ pub enum CompilerErrorType {
 #[derive(Debug)]
 pub enum VMErrorType {
     NotImplemented,
+    InvalidCast,
     StackElementUninitialized,
     OperationNotSupported,
     AssignToNonVariable,
