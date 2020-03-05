@@ -80,36 +80,36 @@ impl<'a> VM {
 }
 
 pub struct VMInstance {
-    scope: Scope
+    scope: Rc<RefCell<Scope>>
 }
 
 impl<'a, 'r> VMInstance {
     pub fn new(parent_scope: Rc<RefCell<Scope>>) -> Self {
         Self {
-            scope: Scope::new(parent_scope)
+            scope: Rc::from(RefCell::from(Scope::new(parent_scope)))
         }
     }
 
-    // fn instance() -> Self {
-
-    // }
+    fn instance(&self) -> Self {
+        VMInstance::new(Rc::clone(&self.scope))
+    }
 
     fn push(&mut self, instruction: &'a Instruction, val: Rc<Value>) -> Status {
-        self.scope.stack.borrow_mut().push(instruction, val)
+        self.scope.borrow_mut().stack.borrow_mut().push(instruction, val)
     }
 
     fn pop(&mut self, instruction: &'a Instruction) -> Result<Rc<Value>, Error> {
-        self.scope.stack.borrow_mut().pop(instruction)
+        self.scope.borrow_mut().stack.borrow_mut().pop(instruction)
     }
 
     fn create(&mut self, val: Value) -> Rc<Value> {
-        self.scope.pool.borrow_mut().create(val)
+        self.scope.borrow_mut().pool.borrow_mut().create(val)
     }
 
     fn get_variable(&self, val: &Rc<Value>) -> Result<Rc<Value>, Error> {
         Ok(match &**val {
             Value::Variable { identifier, offset: _, width: _ } => {
-                self.scope.variables.get(identifier)
+                self.scope.borrow_mut().variables.get(identifier)
                     .or(Some(&Rc::from(NULL)))
                     .map(|v| Rc::clone(&v))
                     .unwrap()
@@ -130,7 +130,7 @@ impl<'a, 'r> VMInstance {
         };
 
         let second = self.get_variable(&stack_second)?;
-        self.scope.variables.insert(String::from(identifier), second);
+        self.scope.borrow_mut().variables.insert(String::from(identifier), second);
 
         self.push(instruction, Rc::clone(&stack_first))?;
     
@@ -257,7 +257,11 @@ impl<'a, 'r> VMInstance {
                     let func = match &*self.get_variable(var)? {
                         Value::Function { position } => match &program[*position].code {
                             Code::PushFunction { pars, body } => {
-                                self.do_exec(body, 0, offset)?;
+                                let mut instance = self.instance();
+                                instance.do_exec(body, 0, 0)?;
+                                if let Some(val) = instance.pop(instruction).ok() {
+                                    self.push(instruction, val)?;
+                                }
                             },
                             _ => {
                                 println!("{:?}", program[*position].code);
