@@ -291,7 +291,14 @@ impl<'a> Parser<'a> {
             let closed;
 
             loop {
-                args.push(Box::new(self.expression()?));
+                args.push(Box::new({
+                    // Convert Empty expression to Null, in the case of no argument, like a(,4)
+                    let mut expr = self.expression()?;
+                    if let ExpressionType::Empty = expr.expression_type {
+                        expr.expression_type = ExpressionType::Primary(Primary::Literal(&Literal::Null));
+                    }
+                    expr
+                }));
 
                 if self.is_end() {
                     return Err(Error::new(open.offset, open.width, ErrorType::ParserError(ParserErrorType::UnclosedParenthesis)));
@@ -303,6 +310,13 @@ impl<'a> Parser<'a> {
                 }
 
                 self.get(&[Token::Comma]);
+            }
+
+            // Remove arguments in the case of empty arguments function call, like a()
+            if args.len() == 1 {
+                if let ExpressionType::Primary(Primary::Literal(&Literal::Null)) = args[0].expression_type {
+                    args.pop();
+                }
             }
 
             expr = Expression {

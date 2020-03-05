@@ -39,4 +39,8 @@ impl Scope {
                 .and_then(|parent| parent.borrow()
                     .get_variable(identifier)))
     }
+
+    pub fn set_variable(&mut self, identifier: String, value: Rc<Value>) {
+        self.variables.insert(identifier, value);
+    }
 }

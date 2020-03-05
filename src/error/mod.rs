@@ -24,9 +24,11 @@ pub enum CompilerErrorType {
 pub enum VMErrorType {
     NotImplemented,
     InvalidCast,
+    InvalidArgumentCountType,
     StackElementUninitialized,
     OperationNotSupported,
     AssignToNonVariable,
+    MismatchedArgumentCount,
     StackOverflow {
         stack_size: usize,
         index: i32

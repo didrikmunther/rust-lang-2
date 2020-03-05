@@ -56,12 +56,10 @@ pub enum Code {
     PushFunction {
         pars: Vec<String>,
         body_len: usize,
-        // body: Vec<Instruction>
     },
 
     CallFunction {
-        // func: Vec<Instruction>,
-        args: Vec<Instruction>,
+        args_len: usize
     },
     Return // Return from a function
 }

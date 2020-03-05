@@ -132,21 +132,24 @@ impl Compiler {
 
             },
             ExpressionType::FunctionCall { func, args } => {
+                let args = Builder::new()
+                    .append({
+                        let mut instructions = Builder::new();
+                        for arg in args {
+                            instructions = instructions.append(self.expression(&*arg)?);
+                        }
+                        
+                        // Push back amount of arguments
+                        instructions.push_back(Instruction::from_expression(&expr, Code::PushNum(args.len() as i32)))
+                    })
+                    .push_back(Instruction::from_expression(&expr, Code::Return));
+
+
                 self.expression(&*func)?
                     .push_back(Instruction::from_expression(&expr, Code::CallFunction {
-                        args: {
-                            let mut instructions = Builder::new();
-                            for arg in args {
-                                instructions = instructions.append(self.expression(&*arg)?);
-                            }
-                            
-                            // // Push back amount of arguments
-                            // instructions.push_back(Instruction::new(0, 0, Code::PushNum(args.len() as i32)))
-                            //     .to_vec()
-    
-                            instructions.to_vec()
-                        }
+                        args_len: args.len()
                     }))
+                    .append(args)
             }
             ExpressionType::Empty => Builder::new(),
             // _ => return Err(unimplemented_expr(&expr))

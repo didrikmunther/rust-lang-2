@@ -125,6 +125,10 @@ impl<'a, 'r> VMInstance {
         })
     }
 
+    fn set_variable(&mut self, identifier: String, val: Rc<Value>) {
+        self.scope.borrow_mut().set_variable(identifier, val);
+    }
+
     fn assign(&mut self, instruction: &'a Instruction) -> Status {
         let (stack_second, stack_first) = (self.pop(instruction)?, self.pop(instruction)?);
 
@@ -137,7 +141,7 @@ impl<'a, 'r> VMInstance {
         };
 
         let second = self.get_variable(&stack_second)?;
-        self.scope.borrow_mut().variables.insert(String::from(identifier), second);
+        self.scope.borrow_mut().set_variable(String::from(identifier), second);
 
         self.push(instruction, Rc::clone(&stack_first))?;
     
@@ -208,7 +212,7 @@ impl<'a, 'r> VMInstance {
     }
 
     pub fn do_exec(&mut self, program: &'a Program, from: usize) -> Result<(), Error> {
-        println!("do_exec: {:#?}", program);
+        // println!("do_exec: {:#?}", program);
 
         let mut index = from;
 
@@ -255,17 +259,38 @@ impl<'a, 'r> VMInstance {
                     index += body_len; // Jump past the function body
                 },
 
-                Code::CallFunction { args } => {
-                    let var = &self.pop(&instruction)?;
+                Code::CallFunction { args_len } => {
+                    let mut instance = self.instance();
+                    instance.do_exec(program, index + 1)?;
 
-                    println!("{:?}", var);
-                    println!("{:?}", &*self.get_variable(var)?);
-                    println!("{:#?}", program);
+                    let arg_count: usize = match &*instance.pop(instruction)? {
+                        Value::Int(i) => *i as usize,
+                        _ => return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidArgumentCountType)))
+                    };
 
-                    match &*self.get_variable(var)? {
+                    let mut args: Vec<Rc<Value>> = Vec::new();
+                    for _ in 0..arg_count {
+                        args.push(instance.pop(instruction)?);
+                    }
+
+                    let func = &self.pop(&instruction)?;
+
+                    // println!("{:#?}", args);
+                    // println!("{:?}", func);
+                    // println!("{:?}", &*self.get_variable(func)?);
+                    // println!("{:#?}", program);
+
+                    match &*self.get_variable(func)? {
                         Value::Function { position } => match &program[*position].code {
                             Code::PushFunction { pars, .. } => {
-                                let mut instance = self.instance();
+                                if pars.len() != args.len() {
+                                    return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::MismatchedArgumentCount)));
+                                }
+
+                                for i in 0..pars.len() {
+                                    instance.set_variable(pars[i].clone(), Rc::clone(&args[pars.len() - 1 - i]));
+                                }
+
                                 instance.do_exec(program, *position + 1)?;
                                 if let Some(val) = instance.pop(instruction).ok() {
                                     self.push(instruction, instance.get_variable(&val)?)?;
@@ -278,13 +303,12 @@ impl<'a, 'r> VMInstance {
                             }
                         },
                         _ => {
-                            println!("{:?}: {:?}", var, &*self.get_variable(var)?);
+                            println!("{:?}: {:?}", func, &*self.get_variable(func)?);
                             return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidCast)))
                         }
                     }
 
-                    // self.do_exec(args, 0, offset)?;
-                    // let args = self.pop(&EMPTY_INSTRUCTION)?;
+                    index += args_len;
                 }
 
                 Code::Pop => { self.pop(instruction)?; },
