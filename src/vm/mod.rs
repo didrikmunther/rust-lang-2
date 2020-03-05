@@ -208,6 +208,8 @@ impl<'a, 'r> VMInstance {
     }
 
     pub fn do_exec(&mut self, program: &'a Program, from: usize) -> Result<(), Error> {
+        println!("do_exec: {:#?}", program);
+
         let mut index = from;
 
         loop {
@@ -253,14 +255,12 @@ impl<'a, 'r> VMInstance {
                     index += body_len; // Jump past the function body
                 },
 
-                Code::CallFunction { func, args } => {
-                    self.do_exec(func, 0)?;
-
+                Code::CallFunction { args } => {
                     let var = &self.pop(&instruction)?;
 
-                    // println!("{:?}", var);
-                    // println!("{:?}", &*self.get_variable(var)?);
-                    // println!("{:#?}", program);
+                    println!("{:?}", var);
+                    println!("{:?}", &*self.get_variable(var)?);
+                    println!("{:#?}", program);
 
                     match &*self.get_variable(var)? {
                         Value::Function { position } => match &program[*position].code {
@@ -268,11 +268,12 @@ impl<'a, 'r> VMInstance {
                                 let mut instance = self.instance();
                                 instance.do_exec(program, *position + 1)?;
                                 if let Some(val) = instance.pop(instruction).ok() {
-                                    self.push(instruction, val)?;
+                                    self.push(instruction, instance.get_variable(&val)?)?;
                                 }
                             },
                             _ => {
                                 println!("{:?}", program[*position].code);
+                                // Actually invalid function value, this should not happen
                                 return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidCast)))
                             }
                         },

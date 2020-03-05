@@ -60,7 +60,7 @@ pub enum Code {
     },
 
     CallFunction {
-        func: Vec<Instruction>,
+        // func: Vec<Instruction>,
         args: Vec<Instruction>,
     },
     Return // Return from a function
