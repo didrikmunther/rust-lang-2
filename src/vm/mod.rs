@@ -1,8 +1,16 @@
-use std::collections::HashMap;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 use super::error::{Error, ErrorType, VMErrorType};
 use super::compiler::{Program, Code, Instruction};
-use std::rc::Rc;
+
+mod scope;
+mod stack;
+mod pool;
+
+use scope::Scope;
+use stack::Stack;
+use pool::Pool;
 
 const STACK_SIZE: usize = 512;
 const NULL: Value = Value::Null;
@@ -21,39 +29,8 @@ fn operation_not_supported(instruction: &Instruction, first: &Value, second: &Va
         .with_description(format!("Operation [{:?}] not supported for operands of type [{:?}] and [{:?}]", instruction.code, first, second))
 }
 
-pub struct Scope {
-    // root: Option<&'s Scope<'s>>,
-    variables: HashMap<String, Rc<Value>>
-}
-
-impl Scope {
-    pub fn new() -> Self {
-        Scope {
-            variables: HashMap::new()
-        }
-    }
-}
-
-struct Pool {
-    pool: Vec<Rc<Value>>
-}
-
-impl Pool {
-    pub fn new() -> Self {
-        Pool {
-            pool: Vec::new()
-        }
-    }
-
-    pub fn create(&mut self, val: Value) -> Rc<Value> {
-        let p = Rc::new(val);
-        self.pool.push(Rc::clone(&p));
-        p
-    }
-}
-
 #[derive(Debug)]
-enum Value {
+pub enum Value {
     Null,
 
     Int(i32),
@@ -68,53 +45,61 @@ enum Value {
 }
 
 pub struct VM {
-    stacki: i32,
-    stack: Vec<Option<Rc<Value>>>,
-    pool: Pool,
-    scope: Scope
+    root_pool: Rc<RefCell<Pool>>,
+    root_stack: Rc<RefCell<Stack>>,
+    root_scope: Option<Rc<RefCell<Scope>>>,
+    root_instance: Option<VMInstance>
 }
 
 impl<'a> VM {
     pub fn new() -> Self {
-        VM {
-            stacki: 0,
-            stack: std::iter::repeat_with(|| None).take(STACK_SIZE).collect(),
-            pool: Pool::new(),
-            scope: Scope::new()
+        Self {
+            root_pool: Rc::from(RefCell::from(Pool::new())),
+            root_stack: Rc::from(RefCell::from(Stack::new())),
+            root_scope: None,
+            root_instance: None
         }
     }
 
-    // Always pass the instruction responsible for the range check
-    fn check_range(&self, instruction: &'a Instruction, index: i32) -> Status {
-        if index < 0 || index >= STACK_SIZE as i32 {
-            Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::StackOverflow {
-                stack_size: STACK_SIZE as usize,
-                index
-            })).with_description(format!("Stack overflow during operation [{:?}]", instruction.code)))
-        } else {
-            STATUS_OK
+    pub fn exec(&mut self, program: &'a Program) -> Result<String, Error> {
+        if let None = self.root_instance {
+            self.root_scope = Some(Rc::from(RefCell::from(Scope::initial(
+                Rc::clone(&self.root_pool),
+                Rc::clone(&self.root_stack)
+            ))));
+            self.root_instance = Some(VMInstance::new(Rc::clone(self.root_scope.as_ref().unwrap())));
+        }
+
+        let root_instance = self.root_instance.as_mut().unwrap();
+        root_instance.exec(program)
+    }
+}
+
+pub struct VMInstance {
+    scope: Scope,
+}
+
+impl<'a, 'r> VMInstance {
+    pub fn new(parent_scope: Rc<RefCell<Scope>>) -> Self {
+        Self {
+            scope: Scope::new(parent_scope)
         }
     }
+
+    // fn instance() -> Self {
+
+    // }
 
     fn push(&mut self, instruction: &'a Instruction, val: Rc<Value>) -> Status {
-        self.check_range(instruction, self.stacki + 1)?;
-        
-        self.stacki += 1;
-        self.stack[self.stacki as usize] = Some(val);
-        
-        STATUS_OK
+        self.scope.stack.borrow_mut().push(instruction, val)
     }
 
     fn pop(&mut self, instruction: &'a Instruction) -> Result<Rc<Value>, Error> {
-        self.check_range(instruction, self.stacki - 1)?;
+        self.scope.stack.borrow_mut().pop(instruction)
+    }
 
-        self.stacki -= 1;
-        Ok(Rc::clone(
-            match self.stack[self.stacki as usize + 1] {
-                Some(ref v) => v,
-                None => return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::StackElementUninitialized)))
-            }
-        ))
+    fn create(&mut self, val: Value) -> Rc<Value> {
+        self.scope.pool.borrow_mut().create(val)
     }
 
     fn get_variable(&self, val: &Rc<Value>) -> Result<Rc<Value>, Error> {
@@ -140,8 +125,6 @@ impl<'a> VM {
             )
         };
 
-        // check if identifier is valid ie not ""
-
         let second = self.get_variable(&stack_second)?;
         self.scope.variables.insert(String::from(identifier), second);
 
@@ -159,12 +142,12 @@ impl<'a> VM {
                 let res = match instruction.code {
                     Code::Add => first + second,
                     Code::Subtract => first - second,
-                    // Code::Multiply => first * second,
+                    Code::Multiply => first * second,
                     Code::Divide => first / second,
                     _ => return Err(operation_not_supported(instruction, &*stack_first, &*stack_second))
                 };
 
-                let val = self.pool.create(Value::Int(res));
+                let val = self.create(Value::Int(res));
                 self.push(instruction, val)?;
             },
             (&Value::Float(first), &Value::Float(second)) => {
@@ -176,7 +159,7 @@ impl<'a> VM {
                     _ => return Err(operation_not_supported(instruction, &*stack_first, &*stack_second))
                 };
 
-                let val = self.pool.create(Value::Float(res));
+                let val = self.create(Value::Float(res));
                 self.push(instruction, val)?;
             },
             (&Value::Int(first), &Value::Float(second)) => {
@@ -190,7 +173,7 @@ impl<'a> VM {
                     _ => return Err(operation_not_supported(instruction, &*stack_first, &*stack_second))
                 };
 
-                let val = self.pool.create(Value::Float(res));
+                let val = self.create(Value::Float(res));
                 self.push(instruction, val)?;
             },
             (&Value::Float(first), &Value::Int(second)) => {
@@ -204,7 +187,7 @@ impl<'a> VM {
                     _ => return Err(operation_not_supported(instruction, &*stack_first, &*stack_second))
                 };
 
-                let val = self.pool.create(Value::Float(res));
+                let val = self.create(Value::Float(res));
                 self.push(instruction, val)?;
             },
             _ => return Err(operation_not_supported(instruction, &*stack_first, &*stack_second))
@@ -217,15 +200,15 @@ impl<'a> VM {
         for instruction in program {
             match instruction.code {
                 Code::PushNum(i) => {
-                    let val = self.pool.create(Value::Int(i));
+                    let val = self.create(Value::Int(i));
                     self.push(instruction, val)?;
                 },
                 Code::PushFloat(f) => {
-                    let val = self.pool.create(Value::Float(f));
+                    let val = self.create(Value::Float(f));
                     self.push(instruction, val)?;
                 },
                 Code::PushString(ref s) => {
-                    let val = self.pool.create(Value::String(String::from(s)));
+                    let val = self.create(Value::String(String::from(s)));
                     self.push(instruction, val)?;
                 },
                 Code::Add |
@@ -235,7 +218,7 @@ impl<'a> VM {
 
                 Code::Assign => self.assign(instruction)?,
                 Code::PushVar(ref identifier) => {
-                    let val = self.pool.create(Value::Variable {
+                    let val = self.create(Value::Variable {
                         identifier: String::from(identifier),
                         offset: instruction.offset,
                         width: instruction.width
@@ -254,9 +237,11 @@ impl<'a> VM {
 
         // println!("variables: {:?}", self.scope.variables);
 
+        let end_instruction = Instruction::new(0, 0, Code::Null);
+
         Ok(format!(
             "{:?}",
-            self.stack[self.stacki as usize]
+            self.pop(&end_instruction)
                 .as_ref()
                 .map(|v| self.get_variable(&v))
                 .unwrap_or(Ok(Rc::from(NULL)))?

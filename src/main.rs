@@ -11,7 +11,7 @@ struct Lang {
     is_debug: bool
 }
 
-impl Lang {
+impl<'a> Lang {
     pub fn new() -> Self {
         Lang {
             vm: vm::VM::new(),
@@ -34,7 +34,7 @@ impl Lang {
         let lexed = lexer.lex(code.clone())?;
         let parsed = parser.parse(&lexed)?;
         let compiled = compiler.compile(&parsed)?;
-        let executed = self.vm.exec(&compiler.compile(&parsed)?)?;
+        let executed = self.vm.exec(&compiled)?;
     
         if self.is_debug {
             let lexed_res = lexer.lex(String::from(code.clone()))?.into_iter().map(|v| v.block_type).collect::<Vec<BlockType>>();
