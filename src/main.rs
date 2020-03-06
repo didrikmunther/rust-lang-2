@@ -1,6 +1,8 @@
-use lang::*;
-
+use std::io::prelude::*;
+use std::fs::File;
 use ::std::io::{Write};
+
+use lang::*;
 
 use lexer::BlockType;
 use parser::DeclarationType;
@@ -84,7 +86,7 @@ impl<'a> Lang {
     }
 }
 
-fn main() {
+fn shell() {
     let mut lang = Lang::new();
 
     loop {
@@ -111,4 +113,32 @@ fn main() {
             }
         };
     }
+}
+
+fn file(file_name: &str) {
+    let mut lang = Lang::new();
+
+    let mut file = File::open(file_name).expect("Unable to open the file");
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).expect("Unable to read the file");
+
+    match lang.run(&contents) {
+        Ok(res) => println!("{}", res),
+        Err(err) => println!("{}", err
+            .with_code(String::from(contents))
+            .with_file(String::from(file_name))
+            // .with_file(String::from("src/main.lang"))
+        )
+    }
+}
+
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+
+    match args.len() {
+        1 => shell(),
+        2 => file(&args[1]),
+        _ => println!("Wrong number of command line arguments")
+    }
+    
 }

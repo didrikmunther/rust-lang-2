@@ -288,7 +288,8 @@ impl<'a, 'r> VMInstance {
 
                     let mut args: Vec<Rc<Value>> = Vec::new();
                     for _ in 0..arg_count {
-                        args.push(instance.pop(instruction)?);
+                        let var = &instance.pop(instruction)?;
+                        args.push(instance.get_variable(var)?);
                     }
 
                     let func = &self.pop(&instruction)?;
@@ -316,6 +317,7 @@ impl<'a, 'r> VMInstance {
                         },
                         _ => {
                             // println!("{:?}: {:?}", func, &*self.get_variable(func)?);
+                            println!("{:?}", instruction);
                             return Err(
                                 Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidCast))
                                     .with_description(format!("Value [{:?}] could not be cast to [Function] type", func))
@@ -360,6 +362,12 @@ impl<'a, 'r> VMInstance {
         //         .map(|v| (&**v, Rc::strong_count(v)))
         //         .collect::<Vec<(&Value, usize)>>()
         // );
+
+        // {
+        //     let scope = self.scope.borrow();
+        //     let stack = scope.stack.borrow();
+        //     println!("Stack: {}\n{:?}", stack.stacki, &stack.stack);
+        // }
 
         Ok(format!(
             "{:?}",

@@ -1,0 +1,5 @@
+add = (num1, num2) => num1 + num2;
+double = num => add(num, num);
+
+a = 5;
+douable(5) + 3

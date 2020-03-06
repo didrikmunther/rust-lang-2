@@ -189,9 +189,25 @@ impl<'a> Parser<'a> {
 
             declarations
         } else {
-            let declaration = self.declaration()?;
-            end = declaration.offset + declaration.width;
-            vec![declaration]
+            let expr = self.expression()?;
+
+            let stmt = Statement {
+                offset: expr.offset,
+                width: expr.width,
+                content: expr.content,
+                end: false,
+                statement_type: StatementType::Expression(expr)
+            };
+
+            let decl = Declaration {
+                offset: stmt.offset,
+                width: stmt.width,
+                content: stmt.content,
+                declaration_type: DeclarationType::Statement(stmt)
+            };
+
+            end = decl.offset + decl.width;
+            vec![decl]
         };
 
         Ok(Some(Expression {
@@ -321,7 +337,7 @@ impl<'a> Parser<'a> {
 
             expr = Expression {
                 offset: expr.offset,
-                width: closed.offset + 1,
+                width: closed.offset - expr.offset + 1,
                 content: expr.content,
                 expression_type: ExpressionType::FunctionCall {
                     func: Box::new(expr),

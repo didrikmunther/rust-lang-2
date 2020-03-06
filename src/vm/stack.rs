@@ -4,8 +4,8 @@ use super::{Error, ErrorType, VMErrorType};
 use super::{Value, STACK_SIZE, Status, STATUS_OK, Instruction};
 
 pub struct Stack {
-    stacki: i32,
-    stack: Vec<Option<Rc<Value>>>,
+    pub stacki: i32,
+    pub stack: Vec<Option<Rc<Value>>>,
 }
 
 impl<'a> Stack {

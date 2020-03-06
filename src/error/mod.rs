@@ -10,6 +10,7 @@ pub enum LexerErrorType {
 pub enum ParserErrorType {
     Unknown,
     
+    ExpectedSemiColon,
     UnexpectedToken,
     UnclosedParenthesis,
     UnclosedBracket
