@@ -100,6 +100,7 @@ fn main() {
             "$compiled\n" => lang.set_mode(Mode::Compiled),
             "$parsed\n" => lang.set_mode(Mode::Parsed),
             "$lexed\n" => lang.set_mode(Mode::Lexed),
+            "$gc\n" => lang.vm.garbage(),
             _ => match lang.run(buf.as_ref()) {
                 Ok(res) => println!("{}", res),
                 Err(err) => println!("{}", err

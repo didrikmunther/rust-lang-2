@@ -4,7 +4,7 @@ use std::vec::Vec;
 use super::Value;
 
 pub struct Pool {
-    pool: Vec<Rc<Value>>
+    pub pool: Vec<Rc<Value>>
 }
 
 impl Pool {
@@ -18,5 +18,12 @@ impl Pool {
         let p = Rc::new(val);
         self.pool.push(Rc::clone(&p));
         p
+    }
+
+    pub fn garbage(&mut self) {
+        self.pool = self.pool.iter()
+            .filter(|v| Rc::strong_count(v) > 1)
+            .map(|v| Rc::clone(v))
+            .collect::<Vec<Rc<Value>>>();
     }
 }

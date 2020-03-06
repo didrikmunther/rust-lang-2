@@ -13,6 +13,8 @@ use stack::Stack;
 use pool::Pool;
 
 const STACK_SIZE: usize = 512;
+const GC_INSTRUCTION_COUNT: usize = 50; // At which amount of instructions to run the GC
+
 const NULL: Value = Value::Null;
 
 type Status = Result<(), Error>;
@@ -39,8 +41,8 @@ pub enum Value {
 
     Variable {
         identifier: String,
-        offset: usize,
-        width: usize
+        // offset: usize,
+        // width: usize
     },
 
     Function {
@@ -78,10 +80,25 @@ impl<'a> VM {
         let root_instance = self.root_instance.as_mut().unwrap();
         root_instance.exec(program, offset)
     }
+
+    pub fn garbage(&mut self) {
+        if let Some(ref mut instance) = self.root_instance {
+            println!("Running garbage collector...");
+            instance.garbage();
+
+            println!(
+                "...garbage collection done.\nContents of pool after garbage collection:\n{:?}",
+                instance.scope.borrow().pool.borrow().pool.iter()
+                    .map(|v| (&**v, Rc::strong_count(v)))
+                    .collect::<Vec<(&Value, usize)>>()
+            );
+        }
+    }
 }
 
 pub struct VMInstance {
-    scope: Rc<RefCell<Scope>>
+    scope: Rc<RefCell<Scope>>,
+    instruction_count: Rc<RefCell<usize>>
 }
 
 impl std::fmt::Debug for VMInstance {
@@ -92,13 +109,18 @@ impl std::fmt::Debug for VMInstance {
 
 impl<'a, 'r> VMInstance {
     pub fn new(parent_scope: Rc<RefCell<Scope>>) -> Self {
+        Self::from_instruction_count(parent_scope, Rc::from(RefCell::from(0)))
+    }
+
+    fn from_instruction_count(parent_scope: Rc<RefCell<Scope>>, instruction_count: Rc<RefCell<usize>>) -> Self {
         Self {
-            scope: Rc::from(RefCell::from(Scope::new(parent_scope)))
+            scope: Rc::from(RefCell::from(Scope::new(parent_scope))),
+            instruction_count
         }
     }
 
     fn instance(&self) -> Self {
-        VMInstance::new(Rc::clone(&self.scope))
+        VMInstance::from_instruction_count(Rc::clone(&self.scope), Rc::clone(&self.instruction_count))
     }
 
     fn push(&mut self, instruction: &'a Instruction, val: Rc<Value>) -> Status {
@@ -115,10 +137,10 @@ impl<'a, 'r> VMInstance {
 
     fn get_variable(&self, val: &Rc<Value>) -> Result<Rc<Value>, Error> {
         Ok(match &**val {
-            Value::Variable { identifier, offset: _, width: _ } => {
+            Value::Variable { identifier, .. } => {
                 self.scope.borrow_mut().get_variable(identifier)
                     .or(Some(Rc::from(NULL)))
-                    .map(|v| Rc::clone(&v))
+                    .map(|v| v)
                     .unwrap()
             },
             _ => Rc::clone(val)
@@ -132,8 +154,8 @@ impl<'a, 'r> VMInstance {
     fn assign(&mut self, instruction: &'a Instruction) -> Status {
         let (stack_second, stack_first) = (self.pop(instruction)?, self.pop(instruction)?);
 
-        let (identifier, _offset, _width) = match &*stack_first {
-            Value::Variable { identifier, offset, width } => (identifier, offset, width),
+        let identifier = match &*stack_first {
+            Value::Variable { identifier } => identifier,
             _ => return Err(
                 Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::AssignToNonVariable))
                     .with_description(format!("cannot assign to [{:?}]", stack_first))
@@ -212,8 +234,6 @@ impl<'a, 'r> VMInstance {
     }
 
     pub fn do_exec(&mut self, program: &'a Program, from: usize) -> Result<(), Error> {
-        // println!("do_exec: {:#?}", program);
-
         let mut index = from;
 
         loop {
@@ -244,14 +264,12 @@ impl<'a, 'r> VMInstance {
                 Code::Assign => self.assign(instruction)?,
                 Code::PushVar(ref identifier) => {
                     let val = self.create(Value::Variable {
-                        identifier: String::from(identifier),
-                        offset: instruction.offset,
-                        width: instruction.width
+                        identifier: String::from(identifier)
                     });
                     self.push(instruction, val)?;
                 },
 
-                Code::PushFunction { pars, body_len } => {
+                Code::PushFunction { body_len, .. } => {
                     let val = self.create(Value::Function {
                         position: index
                     });
@@ -275,11 +293,6 @@ impl<'a, 'r> VMInstance {
 
                     let func = &self.pop(&instruction)?;
 
-                    // println!("{:#?}", args);
-                    // println!("{:?}", func);
-                    // println!("{:?}", &*self.get_variable(func)?);
-                    // println!("{:#?}", program);
-
                     match &*self.get_variable(func)? {
                         Value::Function { position } => match &program[*position].code {
                             Code::PushFunction { pars, .. } => {
@@ -297,18 +310,20 @@ impl<'a, 'r> VMInstance {
                                 }
                             },
                             _ => {
-                                println!("{:?}", program[*position].code);
-                                // Actually invalid function value, this should not happen
-                                return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidCast)))
+                                // println!("{:?}", program[*position].code);
+                                return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidFunctionValue)))
                             }
                         },
                         _ => {
-                            println!("{:?}: {:?}", func, &*self.get_variable(func)?);
-                            return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidCast)))
+                            // println!("{:?}: {:?}", func, &*self.get_variable(func)?);
+                            return Err(
+                                Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidCast))
+                                    .with_description(format!("Value [{:?}] could not be cast to [Function] type", func))
+                            );
                         }
                     }
 
-                    index += args_len;
+                    index += args_len; // Jump past the arguments
                 }
 
                 Code::Pop => { self.pop(instruction)?; },
@@ -320,16 +335,31 @@ impl<'a, 'r> VMInstance {
                 )
             }
 
+            *self.instruction_count.borrow_mut() += 1;
             index += 1;
+
+            if *self.instruction_count.borrow() > GC_INSTRUCTION_COUNT {
+                self.garbage();
+                *self.instruction_count.borrow_mut() = 0;
+            }
         }
 
         Ok(())
     }
 
+    pub fn garbage(&mut self) {
+        self.scope.borrow_mut().garbage();
+    }
+
     pub fn exec(&mut self, program: &'a Program, from: usize) -> Result<String, Error> {
         self.do_exec(program, from)?;
 
-        // println!("variables: {:?}", self.scope.variables);
+        // println!(
+        //     "{:?}",
+        //     self.scope.borrow().pool.borrow().pool.iter()
+        //         .map(|v| (&**v, Rc::strong_count(v)))
+        //         .collect::<Vec<(&Value, usize)>>()
+        // );
 
         Ok(format!(
             "{:?}",

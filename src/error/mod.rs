@@ -24,6 +24,7 @@ pub enum CompilerErrorType {
 pub enum VMErrorType {
     NotImplemented,
     InvalidCast,
+    InvalidFunctionValue,
     InvalidArgumentCountType,
     StackElementUninitialized,
     OperationNotSupported,

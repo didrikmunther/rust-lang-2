@@ -43,4 +43,8 @@ impl Scope {
     pub fn set_variable(&mut self, identifier: String, value: Rc<Value>) {
         self.variables.insert(identifier, value);
     }
+
+    pub fn garbage(&mut self) {
+        self.pool.borrow_mut().garbage();
+    }
 }
