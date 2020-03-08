@@ -305,8 +305,14 @@ impl<'a, 'r> VMInstance {
                                     instance.set_variable(pars[i].clone(), Rc::clone(&args[pars.len() - 1 - i]));
                                 }
 
+                                let stack_index = instance.scope.borrow().stack.borrow().stacki;
                                 instance.do_exec(program, *position + 1)?;
-                                if let Some(val) = instance.pop(instruction).ok() {
+
+                                println!("Before: {}, after: {}", stack_index, instance.scope.borrow().stack.borrow().stacki);
+
+                                if instance.scope.borrow().stack.borrow().stacki <= stack_index {
+                                    self.push(instruction, Rc::from(NULL))?;
+                                } else if let Some(val) = instance.pop(instruction).ok() {
                                     self.push(instruction, instance.get_variable(&val)?)?;
                                 }
                             },

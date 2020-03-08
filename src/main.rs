@@ -122,6 +122,8 @@ fn file(file_name: &str) {
     let mut contents = String::new();
     file.read_to_string(&mut contents).expect("Unable to read the file");
 
+    // lang.set_mode(Mode::Lexed);
+
     match lang.run(&contents) {
         Ok(res) => println!("{}", res),
         Err(err) => println!("{}", err

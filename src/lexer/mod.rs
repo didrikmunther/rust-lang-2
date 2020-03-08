@@ -15,8 +15,6 @@ pub type LexerResult = Result<LinkedList<Block>, Error>;
 #[derive(Debug)]
 pub enum BlockType {
     Rest,
-    Comment,
-
     Identifier(String),
     Literal(Literal),
     Token(Token)
@@ -237,13 +235,6 @@ impl Lexer {
                 },
                 '\n' => {
                     if is_comment {
-                        result.push_back(Block::new(
-                            BlockType::Comment,
-                            Token::Comment,
-                            buf,
-                            block.offset + get_last(&positions)
-                        ));
-    
                         positions.push(i + 1);
                         buf = String::new();
                         is_comment = false;
@@ -257,10 +248,10 @@ impl Lexer {
             buf.push(v);
         }
     
-        if buf.len() > 0 {
+        if buf.len() > 0 && !is_comment {
             result.push_back(Block::new(
-                if is_comment { BlockType::Comment } else { BlockType::Rest },
-                if is_comment { Token::Comment } else { Token::Rest },
+                BlockType::Rest,
+                Token::Rest,
                 buf,
                 block.offset + get_last(&positions)
             ));
