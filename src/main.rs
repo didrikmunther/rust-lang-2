@@ -106,7 +106,7 @@ fn shell() {
             "$parsed\n" => lang.set_mode(Mode::Parsed),
             "$lexed\n" => lang.set_mode(Mode::Lexed),
             "$gc\n" => lang.vm.garbage(),
-            _ => match lang.run(buf.as_ref()) {
+            _ => match lang.run(code.as_ref()) {
                 Ok(res) => println!("{}", res),
                 Err(err) => println!("{}", err
                     .with_code(code.clone())
