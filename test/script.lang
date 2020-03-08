@@ -1,11 +1,13 @@
-add = (num1, num2) => num1 + num2;
-double = num => {
-    add(num, num)
-};
+// add = (num1, num2) => num1 + num2;
+// double = num => {
+//     add(num, num)
+// };
 
-a = 5;
-double(8) + 3;
+// a = 5;
+// double(8) + 3;
 
-a = (b, c) => c;
+// a = (b, c) => c;
 
-a(,4)
+// a(,4);
+
+print(5);

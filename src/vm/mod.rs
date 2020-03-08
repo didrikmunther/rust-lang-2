@@ -7,10 +7,12 @@ use super::compiler::{Program, Code, Instruction};
 mod scope;
 mod stack;
 mod pool;
+mod functions;
 
 use scope::Scope;
 use stack::Stack;
 use pool::Pool;
+use functions::NativeFunction;
 
 const STACK_SIZE: usize = 512;
 const GC_INSTRUCTION_COUNT: usize = 50; // At which amount of instructions to run the GC
@@ -41,14 +43,14 @@ pub enum Value {
 
     Variable {
         identifier: String,
-        // offset: usize,
-        // width: usize
     },
-
     Function {
-        // instance: Rc<VMInstance>,
         position: usize
+    },
+    NativeFunction {
+        function: NativeFunction
     }
+
 }
 
 pub struct VM {
@@ -77,7 +79,12 @@ impl<'a> VM {
             self.root_instance = Some(VMInstance::new(Rc::clone(self.root_scope.as_ref().unwrap())));
         }
 
-        let root_instance = self.root_instance.as_mut().unwrap();
+        let root_instance: &mut VMInstance = self.root_instance.as_mut().unwrap();
+
+        root_instance.set_variable(String::from("print"), Rc::from(Value::NativeFunction {
+            function: functions::print_value
+        }));
+
         root_instance.exec(program, offset)
     }
 
@@ -293,8 +300,9 @@ impl<'a, 'r> VMInstance {
                     }
 
                     let func = &self.pop(&instruction)?;
+                    let func = &*self.get_variable(func)?;
 
-                    match &*self.get_variable(func)? {
+                    match func {
                         Value::Function { position } => match &program[*position].code {
                             Code::PushFunction { pars, .. } => {
                                 if pars.len() != args.len() {
@@ -319,6 +327,9 @@ impl<'a, 'r> VMInstance {
                                 return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidFunctionValue)))
                             }
                         },
+                        Value::NativeFunction { function } => {
+                            self.push(instruction, function(Rc::from(RefCell::from(instance)), Vec::new())?)?;
+                        }
                         _ => {
                             // println!("{:?}: {:?}", func, &*self.get_variable(func)?);
                             println!("{:?}", instruction);
