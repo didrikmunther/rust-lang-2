@@ -306,16 +306,14 @@ impl<'a> Parser<'a> {
             let mut args = Vec::new();
             let closed;
 
-            loop {
-                args.push(Box::new({
-                    // Convert Empty expression to Null, in the case of no argument, like a(,4)
-                    let mut expr = self.expression()?;
-                    if let ExpressionType::Empty = expr.expression_type {
-                        expr.expression_type = ExpressionType::Primary(Primary::Literal(&Literal::Null));
-                    }
-                    expr
-                }));
+            // Ok(Expression {
+        //     offset: 0,
+        //     width: 0,
+        //     content: "",
+        //     expression_type: ExpressionType::Empty
+        // })
 
+            loop {
                 if self.is_end() {
                     return Err(Error::new(open.offset, open.width, ErrorType::ParserError(ParserErrorType::UnclosedParenthesis)));
                 }
@@ -325,7 +323,18 @@ impl<'a> Parser<'a> {
                     break;
                 }
 
-                self.get(&[Token::Comma]);
+                if let Some(comma) = self.get(&[Token::Comma]) {
+                    args.push(Box::new(Expression {
+                        offset: comma.offset,
+                        width: comma.width,
+                        content: &comma.content,
+                        expression_type: ExpressionType::Primary(Primary::Literal(&Literal::Null))
+                    }));
+                } else {
+                    args.push(Box::new(self.expression()?));
+    
+                    self.get(&[Token::Comma]);
+                }
             }
 
             // Remove arguments in the case of empty arguments function call, like a()
@@ -383,28 +392,21 @@ impl<'a> Parser<'a> {
     }
 
     fn empty(&mut self) -> ExpressionResult<'a> {
-        Ok(Expression {
-            offset: 0,
-            width: 0,
-            content: "",
-            expression_type: ExpressionType::Empty
-        })
-
-        // let (offset, width) = self.peek()
-        //     .map(|v| (v.offset, v.width))
-        //     .or(Some((0, 0)))
-        //     .unwrap();
+        let (offset, width) = self.peek()
+            .map(|v| (v.offset, v.width))
+            .or(Some((0, 0)))
+            .unwrap();
         
-        // return Err(
-        //     Error::new(offset, width, ErrorType::ParserError(ParserErrorType::UnexpectedToken))
-        //         .with_description(format!(
-        //             "Did not expect token [{}]",
-        //             self.peek()
-        //                 .map(|v| format!("{:?}", v.block_type))
-        //                 .or(Some(String::from("Unknown block")))
-        //                 .unwrap()
-        //         ))
-        // );
+        return Err(
+            Error::new(offset, width, ErrorType::ParserError(ParserErrorType::UnexpectedToken))
+                .with_description(format!(
+                    "Did not expect token [{}]",
+                    self.peek()
+                        .map(|v| format!("{:?}", v.block_type))
+                        .or(Some(String::from("Unknown block")))
+                        .unwrap()
+                ))
+        );
     }
 
     pub fn parse(&mut self, lexed: &'a LinkedList<Block>) -> Result<AST<'a>, Error> {

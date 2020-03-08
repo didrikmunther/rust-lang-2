@@ -4,4 +4,8 @@ double = num => {
 };
 
 a = 5;
-double(a) + 3
+double(8) + 3;
+
+a = (b, c) => c;
+
+a(,4)

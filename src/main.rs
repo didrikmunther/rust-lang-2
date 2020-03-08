@@ -88,6 +88,7 @@ impl<'a> Lang {
 
 fn shell() {
     let mut lang = Lang::new();
+    let mut code = String::new();
 
     loop {
         print!("> ");
@@ -95,6 +96,8 @@ fn shell() {
 
         let mut buf = String::new();
         std::io::stdin().read_line(&mut buf).expect("Could not read user input.");
+
+        code.push_str(&buf);
 
         match buf.as_ref() {
             "quit\n" => break,
@@ -106,7 +109,7 @@ fn shell() {
             _ => match lang.run(buf.as_ref()) {
                 Ok(res) => println!("{}", res),
                 Err(err) => println!("{}", err
-                    .with_code(String::from(buf))
+                    .with_code(code.clone())
                     .with_file(String::from("[interactive shell]"))
                     // .with_file(String::from("src/main.lang"))
                 )

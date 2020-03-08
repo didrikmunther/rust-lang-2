@@ -28,7 +28,7 @@ fn unimplemented(offset: usize, width: usize) -> Error {
 #[allow(dead_code)]
 fn operation_not_supported(instruction: &Instruction, first: &Value, second: &Value) -> Error {
     Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::OperationNotSupported))
-        .with_description(format!("Operation [{:?}] not supported for operands of type [{:?}] and [{:?}]", instruction.code, first, second))
+        .with_description(format!("Operation [{:?}] not supported for operands of type [{:?}] and [{:?}], {:#?}", instruction.code, first, second, instruction))
 }
 
 #[derive(Debug)]
@@ -308,8 +308,6 @@ impl<'a, 'r> VMInstance {
                                 let stack_index = instance.scope.borrow().stack.borrow().stacki;
                                 instance.do_exec(program, *position + 1)?;
 
-                                println!("Before: {}, after: {}", stack_index, instance.scope.borrow().stack.borrow().stacki);
-
                                 if instance.scope.borrow().stack.borrow().stacki <= stack_index {
                                     self.push(instruction, Rc::from(NULL))?;
                                 } else if let Some(val) = instance.pop(instruction).ok() {
@@ -334,6 +332,7 @@ impl<'a, 'r> VMInstance {
                     index += args_len; // Jump past the arguments
                 }
 
+                Code::PushNull => { self.push(instruction, Rc::from(NULL))? },
                 Code::Pop => { self.pop(instruction)?; },
                 Code::Return => { break; },
 
