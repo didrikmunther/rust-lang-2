@@ -163,6 +163,12 @@ impl Compiler {
                     })
                     .push_back(Instruction::from_expression(&expr, Code::PushList(list.len() as i32)))
             },
+            ExpressionType::ListIndex { list, index } => {
+                Builder::new()
+                    .append(self.expression(list)?)
+                    .append(self.expression(index)?)
+                    .push_back(Instruction::from_expression(&expr, Code::PushListIndex))
+            },
             ExpressionType::Empty => Builder::new(),
             // _ => return Err(unimplemented_expr(&expr))
         })

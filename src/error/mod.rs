@@ -31,6 +31,10 @@ pub enum VMErrorType {
     StackElementUninitialized,
     OperationNotSupported,
     AssignToNonVariable,
+    IndexOutOfBounds {
+        list_size: i32,
+        index: i32
+    },
     MismatchedArgumentCount,
     StackOverflow {
         stack_size: usize,

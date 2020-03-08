@@ -53,6 +53,7 @@ pub enum Code {
     PushFloat(f64),
     PushString(String),
     PushList(i32), // List size
+    PushListIndex, // Pop top num, and pop top list, take the index
     PushVar(String),
     PushFunction {
         pars: Vec<String>,

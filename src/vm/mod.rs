@@ -33,6 +33,12 @@ fn operation_not_supported(instruction: &Instruction, first: &Value, second: &Va
         .with_description(format!("Operation [{:?}] not supported for operands of type [{:?}] and [{:?}], {:#?}", instruction.code, first, second, instruction))
 }
 
+#[allow(dead_code)]
+fn invalid_cast(instruction: &Instruction, value: &Value, to: &'static str) -> Error {
+    Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidCast))
+        .with_description(format!("Value [{:?}] could not be cast to [{}] type", value, to))
+}
+
 #[derive(Debug)]
 pub enum Value {
     Null,
@@ -271,6 +277,31 @@ impl<'a, 'r> VMInstance {
                     }
                     self.push(instruction, Rc::from(Value::List(items.into_iter().rev().collect())))?;
                 },
+                Code::PushListIndex => {
+                    let index = self.pop(instruction)?;
+                    let index = self.get_variable(&index)?;
+                    let index: i32 = match &*index {
+                        Value::Int(i) => *i,
+                        _ => return Err(invalid_cast(instruction, &*index, "Int"))
+                    };
+
+                    let list = self.pop(instruction)?;
+                    let list = self.get_variable(&list)?;
+
+                    match &*list {
+                        Value::List(list) => {
+                            if index >= list.len() as i32 {
+                                return Err(Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::IndexOutOfBounds {
+                                    list_size: list.len() as i32,
+                                    index
+                                })));
+                            }
+
+                            self.push(instruction, Rc::clone(&list[index as usize]))?;
+                        },
+                        _ => return Err(invalid_cast(instruction, &*list, "List"))
+                    }
+                }
 
                 Code::Add |
                 Code::Subtract |
@@ -342,10 +373,7 @@ impl<'a, 'r> VMInstance {
                         _ => {
                             // println!("{:?}: {:?}", func, &*self.get_variable(func)?);
                             println!("{:?}", instruction);
-                            return Err(
-                                Error::new(instruction.offset, instruction.width, ErrorType::VMError(VMErrorType::InvalidCast))
-                                    .with_description(format!("Value [{:?}] could not be cast to [Function] type", func))
-                            );
+                            return Err(invalid_cast(instruction, func, "Function"));
                         }
                     }
 

@@ -46,6 +46,10 @@ pub enum ExpressionType<'a> {
     Empty,
     Primary(Primary<'a>),
     List(Vec<Box<Expression<'a>>>),
+    ListIndex {
+        list: Box<Expression<'a>>,
+        index: Box<Expression<'a>>
+    },
     Binary {
         left: Box<Expression<'a>>,
         right: Box<Expression<'a>>,
@@ -330,10 +334,34 @@ impl<'a> Parser<'a> {
     }
 
     fn multiplication(&mut self) -> ExpressionResult<'a> {
-        let mut expr = self.function_call()?;
+        let mut expr = self.list_index()?;
 
         while let Some(block) = self.get(&[Token::Asterix, Token::FSlash]) {
-            expr = Parser::binary(expr, self.function_call()?, block);
+            expr = Parser::binary(expr, self.list_index()?, block);
+        }
+
+        Ok(expr)
+    }
+
+    fn list_index(&mut self) -> ExpressionResult<'a> {
+        let mut expr = self.function_call()?;
+
+        while let Some(open) = self.get(&[Token::BraceOpen]) {
+            let index = self.expression()?;
+
+            if let Some(close) = self.get(&[Token::BraceClosed]) {
+                expr = Expression {
+                    offset: expr.offset,
+                    width: expr.width + close.offset + close.width - open.offset,
+                    content: "",
+                    expression_type: ExpressionType::ListIndex {
+                        list: Box::from(expr),
+                        index: Box::from(index)
+                    }
+                };
+            } else {
+                return Err(Error::new(open.offset, open.width, ErrorType::ParserError(ParserErrorType::UnclosedBrace)));
+            }
         }
 
         Ok(expr)
