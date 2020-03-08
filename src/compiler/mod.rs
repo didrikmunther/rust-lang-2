@@ -150,7 +150,19 @@ impl Compiler {
                         args_len: args.len()
                     }))
                     .append(args)
-            }
+            },
+            ExpressionType::List(list) => {
+                Builder::new()
+                    .append({
+                        let mut instructions = Builder::new();
+                        for item in list {
+                            instructions = instructions.append(self.expression(&*item)?);
+                        }
+
+                        instructions
+                    })
+                    .push_back(Instruction::from_expression(&expr, Code::PushList(list.len() as i32)))
+            },
             ExpressionType::Empty => Builder::new(),
             // _ => return Err(unimplemented_expr(&expr))
         })

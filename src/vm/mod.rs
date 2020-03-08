@@ -40,6 +40,7 @@ pub enum Value {
     Int(i32),
     Float(f64),
     String(String),
+    List(Vec<Rc<Value>>),
 
     Variable {
         identifier: String,
@@ -50,7 +51,6 @@ pub enum Value {
     NativeFunction {
         function: NativeFunction
     }
-
 }
 
 pub struct VM {
@@ -263,6 +263,15 @@ impl<'a, 'r> VMInstance {
                     let val = self.create(Value::String(String::from(s)));
                     self.push(instruction, val)?;
                 },
+                Code::PushList(len) => {
+                    let mut items = Vec::new();
+                    for _ in 0..*len {
+                        let val = self.pop(instruction)?;   
+                        items.push(self.get_variable(&val)?);
+                    }
+                    self.push(instruction, Rc::from(Value::List(items.into_iter().rev().collect())))?;
+                },
+
                 Code::Add |
                 Code::Subtract |
                 Code::Multiply |

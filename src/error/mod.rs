@@ -13,6 +13,7 @@ pub enum ParserErrorType {
     ExpectedSemiColon,
     UnexpectedToken,
     UnclosedParenthesis,
+    UnclosedBrace,
     UnclosedBracket
 }
 

@@ -52,6 +52,7 @@ pub enum Code {
     PushNum(i32),
     PushFloat(f64),
     PushString(String),
+    PushList(i32), // List size
     PushVar(String),
     PushFunction {
         pars: Vec<String>,

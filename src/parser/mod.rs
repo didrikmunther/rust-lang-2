@@ -45,6 +45,7 @@ pub struct Expression<'a> {
 pub enum ExpressionType<'a> {
     Empty,
     Primary(Primary<'a>),
+    List(Vec<Box<Expression<'a>>>),
     Binary {
         left: Box<Expression<'a>>,
         right: Box<Expression<'a>>,
@@ -255,17 +256,56 @@ impl<'a> Parser<'a> {
     }
 
     fn expression(&mut self) -> ExpressionResult<'a> {
-        Ok(self.assign()?)
+        self.assign()
     }
 
     fn assign(&mut self) -> ExpressionResult<'a> {
-        let mut expr = self.function()?;
+        let mut expr = self.list()?;
 
         while let Some(block) = self.get(&[Token::Equals]) {
-            expr = Parser::binary(expr, self.function()?, block);
+            expr = Parser::binary(expr, self.list()?, block);
         }
 
         Ok(expr)
+    }
+
+    fn list(&mut self) -> ExpressionResult<'a> {
+        if let Some(open) = self.get(&[Token::BraceOpen]) {
+            let mut values = Vec::new();
+            let closed;
+
+            loop {
+                if self.is_end() {
+                    return Err(Error::new(open.offset, open.width, ErrorType::ParserError(ParserErrorType::UnclosedBrace)));
+                }
+
+                if let Some(brace) = self.get(&[Token::BraceClosed]) {
+                    closed = brace;
+                    break;
+                }
+
+                if let Some(comma) = self.get(&[Token::Comma]) {
+                    values.push(Box::new(Expression {
+                        offset: comma.offset,
+                        width: comma.width,
+                        content: &comma.content,
+                        expression_type: ExpressionType::Primary(Primary::Literal(&Literal::Null))
+                    }));
+                } else {
+                    values.push(Box::new(self.expression()?));
+                    self.get(&[Token::Comma]);
+                }
+            }
+
+            return Ok(Expression {
+                offset: open.offset,
+                width: closed.offset + closed.width,
+                content: "",
+                expression_type: ExpressionType::List(values)
+            });
+        }
+
+        self.function()
     }
 
     fn function(&mut self) -> ExpressionResult<'a> {
@@ -306,13 +346,6 @@ impl<'a> Parser<'a> {
             let mut args = Vec::new();
             let closed;
 
-            // Ok(Expression {
-        //     offset: 0,
-        //     width: 0,
-        //     content: "",
-        //     expression_type: ExpressionType::Empty
-        // })
-
             loop {
                 if self.is_end() {
                     return Err(Error::new(open.offset, open.width, ErrorType::ParserError(ParserErrorType::UnclosedParenthesis)));
@@ -332,7 +365,6 @@ impl<'a> Parser<'a> {
                     }));
                 } else {
                     args.push(Box::new(self.expression()?));
-    
                     self.get(&[Token::Comma]);
                 }
             }
