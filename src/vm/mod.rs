@@ -368,7 +368,7 @@ impl<'a, 'r> VMInstance {
                             }
                         },
                         Value::NativeFunction { function } => {
-                            self.push(instruction, function(Rc::from(RefCell::from(instance)), Vec::new())?)?;
+                            self.push(instruction, function(Rc::from(RefCell::from(instance)), args.into_iter().rev().collect())?)?;
                         }
                         _ => {
                             // println!("{:?}: {:?}", func, &*self.get_variable(func)?);

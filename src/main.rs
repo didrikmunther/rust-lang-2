@@ -24,7 +24,8 @@ fn flush() {
 struct Lang {
     vm: vm::VM,
     compiled: Program,
-    mode: Mode
+    mode: Mode,
+    code_offset: usize
 }
 
 impl<'a> Lang {
@@ -32,7 +33,8 @@ impl<'a> Lang {
         Lang {
             vm: vm::VM::new(),
             compiled: Vec::new(),
-            mode: Mode::Run
+            mode: Mode::Run,
+            code_offset: 0
         }
     }
 
@@ -56,9 +58,11 @@ impl<'a> Lang {
             Mode::Run => {
                 let offset = self.compiled.len();
 
-                let lexed = lexer.lex(code.clone())?;
+                let lexed = lexer.lex(code.clone(), self.code_offset)?;
                 let parsed = parser.parse(&lexed)?;
                 let mut compiled = compiler.compile(&parsed)?;
+
+                self.code_offset += code.len();
 
                 self.compiled.append(&mut compiled);
 
@@ -66,18 +70,18 @@ impl<'a> Lang {
                 Ok(format!("{}", executed))
             },
             Mode::Lexed => {
-                let lexed_res = lexer.lex(String::from(code.clone()))
+                let lexed_res = lexer.lex(String::from(code.clone()), 0)
                     .map(|v| v.into_iter().map(|v| v.block_type).collect::<Vec<BlockType>>());
                 Ok(format!("{:#?}", lexed_res))
             },
             Mode::Parsed => {
-                let lexed = lexer.lex(code.clone())?;
+                let lexed = lexer.lex(code.clone(), 0)?;
                 let parsed = parser.parse(&lexed)?;
                 let parsed_res = parsed.into_iter().map(|v| v.declaration_type).collect::<Vec<DeclarationType>>();
                 Ok(format!("{:#?}", parsed_res))
             },
             Mode::Compiled => {
-                let lexed = lexer.lex(code.clone())?;
+                let lexed = lexer.lex(code.clone(), 0)?;
                 let parsed = parser.parse(&lexed)?;
                 let compiled = compiler.compile(&parsed)?;
                 Ok(format!("{:#?}", compiled))
@@ -106,7 +110,7 @@ fn shell() {
             "$parsed\n" => lang.set_mode(Mode::Parsed),
             "$lexed\n" => lang.set_mode(Mode::Lexed),
             "$gc\n" => lang.vm.garbage(),
-            _ => match lang.run(code.as_ref()) {
+            _ => match lang.run(buf.as_ref()) {
                 Ok(res) => println!("{}", res),
                 Err(err) => println!("{}", err
                     .with_code(code.clone())

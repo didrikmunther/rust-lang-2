@@ -16,6 +16,8 @@ pub fn print_value(_instance: NativeInstance, args: Vec<NativeValue>) -> NativeR
         print!("{:?} ", arg);
     }
 
+    println!("");
+
     Ok(Rc::from(NULL))
 }
 

@@ -342,7 +342,7 @@ impl Lexer {
         Ok(result)
     }
 
-    pub fn lex(&self, query: String) -> LexerResult {
+    pub fn lex(&self, query: String, offset: usize) -> LexerResult {
         let w_strings = self.strip_strings(Block::new(BlockType::Rest, Token::Rest, query.chars().collect(), 0))?;
         let w_comments = self.replace_rest(w_strings, &Self::strip_comments)?;
         let mut w_tokens = self.replace_rest(w_comments, &Self::tokenize)?;
@@ -355,14 +355,19 @@ impl Lexer {
         ));
 
         let last = w_tokens.back().unwrap();
-        let (offset, width) = (last.offset, last.width);
+        let (l_offset, l_width) = (last.offset, last.width);
 
         w_tokens.push_back(Block::new(
             BlockType::Token(Token::EOF),
             Token::EOF,
             String::from(" "),
-            offset + width + 1
+            l_offset + l_width + 1
         ));
+
+        if offset > 0 {
+            w_tokens.iter_mut()
+                .for_each(|mut v| v.offset += offset);
+        }
     
         Ok(w_tokens)
     }
